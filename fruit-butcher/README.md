@@ -54,6 +54,7 @@ All files are normalized to -16 LUFS with the silence trimmed off both ends. The
 - `Main screen.mp3` loops on the menu. It starts on the first click, because browsers block autoplay.
 - Level N plays `musicN.mp3`. If that file is missing it falls back to `music4.mp3`.
 - `Hit1-8`: about 30% of fruit kills, at least 1.6 s apart, never the same clip twice in a row, cut off after 2.2 s.
+- `Shadowmourne1-4`: replace `Hit1-8` while Shadowmourne is equipped (same rules, but they play in full).
 - `sfx-sword`: always at the start of level 1, 50% chance on other levels.
 - `Success1-3` / `Defeat1-3`: random pick on win/lose, while the level music fades out.
 
