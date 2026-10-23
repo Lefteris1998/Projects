@@ -139,6 +139,7 @@
     defeat: ['Defeat1.mp3', 'Defeat2.mp3', 'Defeat3.mp3'],
     success: ['Success1.mp3', 'Success2.mp3', 'Success3.mp3'],
     sword: ['sfx-sword.mp3'],
+    mourne: ['Shadowmourne1.mp3', 'Shadowmourne2.mp3', 'Shadowmourne3.mp3', 'Shadowmourne4.mp3'], // replace `hit` with Shadowmourne
   };
   const MUSIC_VOL = 0.45, CLIP_VOL = 0.9, HIT_MAX = 2.2; // seconds; Hit4 is a 9s spurt
 
@@ -711,7 +712,11 @@
     Sfx.squish(F.blood > 1.4 ? 1.4 : 1);
     if (Math.random() < 0.5) Sfx.squeak();
     // a sampled hit now and then, never back-to-back, so it stays funny instead of repetitive
-    if (playing() && game.t - game.lastHit > 1.6 && Math.random() < 0.3) { game.lastHit = game.t; Clips.play('hit', HIT_MAX); }
+    if (playing() && game.t - game.lastHit > 1.6 && Math.random() < 0.3) {
+      game.lastHit = game.t;
+      // Shadowmourne clips are ~2.6s, so they play in full instead of being cut at HIT_MAX
+      if (mourning()) Clips.play('mourne'); else Clips.play('hit', HIT_MAX);
+    }
     game.shake = Math.max(game.shake, (3 + 3 * F.blood) * weapon.shake);
     if (weapon.id === 'knife') {
       for (let i = 0; i < 7; i++) {
