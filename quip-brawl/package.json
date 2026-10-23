@@ -1,0 +1,13 @@
+{
+  "name": "quip-brawl",
+  "version": "1.0.0",
+  "description": "A party game: answer silly prompts on your phone, vote on the funniest.",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

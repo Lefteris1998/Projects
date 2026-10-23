@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quip Brawl</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Ccircle cx=%278%27 cy=%278%27 r=%277%27 fill=%27%23ffd23f%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="host">
+  <main>
+    <header>
+      <p class="logo"><b>Quip</b> <i>Brawl</i></p>
+      <div class="meta" id="meta"></div>
+    </header>
+    <section class="stage" id="stage"><h2>Opening a room…</h2></section>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script src="host.js"></script>
+  <a href="../" id="projects-link" hidden style="position:fixed;left:12px;bottom:12px;z-index:99999;padding:6px 12px;border-radius:6px;background:rgba(0,0,0,.6);color:white;font:13px system-ui,sans-serif;text-decoration:none">← Projects</a>
+  <script>if (location.pathname.includes('/quip-brawl/')) document.getElementById('projects-link').hidden = false;</script>
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blindfold Chess</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <link rel="stylesheet" href="style.css?v=8" />
+</head>
+<body>
+  <div id="app">
+
+    <div id="auth-bar">
+      <div id="auth-signed-in" style="display:none">
+        <img id="auth-avatar" src="" alt="" />
+        <span id="auth-display-name"></span>
+        <button id="auth-signout-btn" class="auth-btn-secondary">Sign out</button>
+      </div>
+      <button id="auth-signin-btn" class="auth-btn-primary">
+        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Sign in with Google
+      </button>
+    </div>
+
+    <div id="main">
+
+      <!-- Wide screens: voice panel lives here (moved by placeColumns() in app.js) -->
+      <div id="left-col"></div>
+
+      <div id="game-col">
+
+        <div id="board-top-controls">
+          <button id="top-new-game-btn">New Game</button>
+          <button id="top-import-btn">
+            <span class="material-symbols-outlined">upload</span>
+            <span class="btn-label">Import</span>
+          </button>
+          <button id="resign-btn" disabled>
+            <span class="material-symbols-outlined">flag</span>
+            <span class="btn-label">Resign</span>
+          </button>
+          <button id="voice-mode-btn" title="Switch voice mode">
+            <span class="material-symbols-outlined">wifi</span>
+          </button>
+        </div>
+
+        <div id="opponent-box" class="player-box">
+          <span class="material-symbols-outlined player-piece" id="opponent-avatar">smart_toy</span>
+          <div class="player-info-col">
+            <span class="player-name">Stockfish</span>
+            <span class="player-sub" id="engine-level">Level 5 – Intermediate</span>
+          </div>
+          <div class="player-clock" id="opponent-clock" style="display:none"></div>
+        </div>
+
+        <div id="board-wrap">
+          <div id="eval-bar">
+            <span id="eval-text-top"></span>
+            <div id="eval-fill"></div>
+            <span id="eval-text-bot"></span>
+          </div>
+          <div id="board"></div>
+          <svg id="board-arrows" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <div id="eval-graph-wrap" style="display:none">
+          <canvas id="eval-graph"></canvas>
+          <div id="graph-moves-strip"></div>
+        </div>
+
+        <div id="player-box" class="player-box">
+          <span class="material-symbols-outlined player-piece" id="player-avatar-icon">person</span>
+          <div class="player-info-col">
+            <span class="player-name">You <span id="player-elo-badge"></span></span>
+            <span class="player-sub" id="player-color-label">White</span>
+          </div>
+          <div class="player-clock" id="player-clock" style="display:none"></div>
+        </div>
+
+        <div id="board-controls">
+          <button id="toggle-vision-btn">
+            <span class="material-symbols-outlined btn-icon">visibility</span>
+            <span class="btn-label">Normal</span>
+          </button>
+          <button id="speaker-btn" class="icon-btn" title="Announcements off (click to enable)">
+            <span class="material-symbols-outlined">volume_off</span>
+          </button>
+          <button id="mic-btn" class="icon-btn" title="Tap to speak a move (M)">
+            <span class="material-symbols-outlined">mic</span>
+          </button>
+          <label class="toggle-switch" id="mic-auto-wrap" title="Hands-free: auto-listens on your turn">
+            <input type="checkbox" id="mic-auto-btn" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Auto</span>
+          </label>
+          <button id="flip-board-btn" class="icon-btn" title="Flip board (F)" aria-label="Flip board">
+            <span class="material-symbols-outlined">sync_alt</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="side-panel">
+
+        <!-- Home screen (shown when no game is active) -->
+        <div id="home-panel">
+          <div id="home-elo-bar">
+            <span class="material-symbols-outlined" style="font-size:18px;color:var(--text-lo)">emoji_events</span>
+            <span id="home-elo-value">1200</span>
+            <span style="color:var(--text-lo);font-size:0.78rem">Rating</span>
+          </div>
+          <div id="home-recent-label">Game History</div>
+          <div id="home-games-list"></div>
+        </div>
+
+        <div id="status">Loading engine...</div>
+        <div id="move-history">
+          <div id="moves-header">
+            <div class="moves-header-left">
+              <span>Move History</span>
+              <span id="opening-name"></span>
+            </div>
+            <div id="moves-header-btns">
+              <button id="analysis-toggle-btn" class="icon-btn" title="Analyze position">
+                <span class="material-symbols-outlined">analytics</span>
+              </button>
+            </div>
+          </div>
+          <div id="moves-list"></div>
+        </div>
+
+        <div id="analysis-panel" style="display:none">
+          <div id="analysis-header">
+            <label class="ceval-switch" title="Toggle engine lines">
+              <input type="checkbox" id="ceval-toggle" checked />
+              <span class="ceval-switch-track"></span>
+            </label>
+            <span id="ceval-pearl"></span>
+            <div id="ceval-engine">
+              <span id="ceval-engine-name">Stockfish 10</span>
+              <span id="analysis-depth"></span>
+            </div>
+            <button id="ceval-settings-btn" class="icon-btn" title="Engine settings">
+              <span class="material-symbols-outlined">settings</span>
+            </button>
+          </div>
+          <div id="ceval-progress"><div id="ceval-progress-fill"></div></div>
+          <div id="analysis-lines"></div>
+          <div id="pv-board-preview" style="display:none"></div>
+        </div>
+
+        <div id="coach-panel" style="display:none">
+          <div id="coach-header">
+            <div id="coach-avatar"><span class="material-symbols-outlined">school</span></div>
+            <div id="coach-id">
+              <span id="coach-name">Coach</span>
+              <span id="coach-sub">Game Review</span>
+            </div>
+            <button id="coach-speak-btn" class="icon-btn" title="Read the explanation aloud">
+              <span class="material-symbols-outlined">record_voice_over</span>
+            </button>
+          </div>
+          <div id="coach-bubble">
+            <div id="coach-verdict"></div>
+            <p id="coach-text"></p>
+            <div id="coach-lines"></div>
+          </div>
+          <div id="coach-source"></div>
+        </div>
+
+        <div id="ai-setup" style="display:none">
+          <label for="api-key-input">Groq API Key (free) — for Whisper voice input and AI coach explanations</label>
+          <input type="password" id="api-key-input" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+          <button id="api-key-save">
+            <span class="material-symbols-outlined">save</span>
+            Save Key
+          </button>
+        </div>
+
+        <div id="voice-panel" style="display:none">
+          <div id="voice-status">
+            <span id="voice-dot"></span>
+            <span id="voice-status-text">Tap the mic (or press M) to speak</span>
+          </div>
+          <div id="chat-messages"></div>
+        </div>
+
+        <div id="nav-controls">
+          <button id="nav-first" class="icon-btn" title="First move" disabled>
+            <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
+          </button>
+          <button id="nav-prev" class="icon-btn" title="Previous move (←)" disabled>
+            <span class="material-symbols-outlined">keyboard_arrow_left</span>
+          </button>
+          <button id="nav-next" class="icon-btn" title="Next move (→)" disabled>
+            <span class="material-symbols-outlined">keyboard_arrow_right</span>
+          </button>
+          <button id="nav-last" class="icon-btn" title="Latest move" disabled>
+            <span class="material-symbols-outlined">keyboard_double_arrow_right</span>
+          </button>
+          <button id="takeback-btn" class="icon-btn" title="Takeback" disabled>
+            <span class="material-symbols-outlined">undo</span>
+          </button>
+          <span id="review-label">Reviewing</span>
+        </div>
+      </div>
+
+      <!-- Wide screens: coach lives here (moved by placeColumns() in app.js) -->
+      <div id="coach-col"></div>
+
+    </div>
+  </div>
+
+  <!-- Confetti canvas -->
+  <canvas id="confetti-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;display:none"></canvas>
+
+  <!-- Screen reader announcements -->
+  <div id="sr-announce" role="status" aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0"></div>
+
+  <!-- New Game modal -->
+  <div id="newgame-modal" role="dialog" aria-modal="true" aria-labelledby="newgame-title">
+    <div id="newgame-card">
+      <h2 id="newgame-title">New Game</h2>
+      <div class="newgame-field">
+        <label>Difficulty</label>
+        <div class="custom-select" id="difficulty-select-wrap" data-value="0">
+          <button type="button" class="custom-select-trigger" id="difficulty-trigger">
+            <span class="custom-select-value">800 Elo</span>
+            <span class="material-symbols-outlined custom-select-chevron">expand_more</span>
+          </button>
+          <ul class="custom-select-options" id="difficulty-options">
+            <li class="custom-select-option selected" data-value="0">800 Elo</li>
+            <li class="custom-select-option" data-value="1">950 Elo</li>
+            <li class="custom-select-option" data-value="2">1100 Elo</li>
+            <li class="custom-select-option" data-value="3">1250 Elo</li>
+            <li class="custom-select-option" data-value="4">1400 Elo</li>
+            <li class="custom-select-option" data-value="5">1550 Elo</li>
+            <li class="custom-select-option" data-value="6">1700 Elo</li>
+            <li class="custom-select-option" data-value="7">1850 Elo</li>
+            <li class="custom-select-option" data-value="8">2000 Elo</li>
+            <li class="custom-select-option" data-value="9">2150 Elo</li>
+          </ul>
+          <!-- hidden native select kept for JS compatibility -->
+          <select id="difficulty-select" style="display:none">
+            <option value="0" selected>800 Elo</option>
+            <option value="1">950 Elo</option>
+            <option value="2">1100 Elo</option>
+            <option value="3">1250 Elo</option>
+            <option value="4">1400 Elo</option>
+            <option value="5">1550 Elo</option>
+            <option value="6">1700 Elo</option>
+            <option value="7">1850 Elo</option>
+            <option value="8">2000 Elo</option>
+            <option value="9">2150 Elo</option>
+          </select>
+        </div>
+      </div>
+      <div class="newgame-field">
+        <label>Play as</label>
+        <div id="color-btns">
+          <button class="color-btn active" data-color="w">
+            <span class="material-symbols-outlined">circle</span>
+            White
+          </button>
+          <button class="color-btn" data-color="b">
+            <span class="material-symbols-outlined">circle</span>
+            Black
+          </button>
+          <button class="color-btn" data-color="r">
+            <span class="material-symbols-outlined">contrast</span>
+            Random
+          </button>
+        </div>
+      </div>
+      <div class="newgame-field">
+        <label>Mode</label>
+        <div id="mode-btns">
+          <button class="mode-btn active" data-mode="normal">
+            <span class="material-symbols-outlined">visibility</span>
+            Normal
+          </button>
+          <button class="mode-btn" data-mode="checkers">
+            <span class="material-symbols-outlined">circle</span>
+            Checkers
+          </button>
+          <button class="mode-btn" data-mode="void">
+            <span class="material-symbols-outlined">visibility_off</span>
+            Void
+          </button>
+        </div>
+      </div>
+      <div class="newgame-field">
+        <label>Time Control</label>
+        <div id="time-btns">
+          <button class="time-btn active" data-time="0">∞</button>
+          <button class="time-btn" data-time="60">1+0</button>
+          <button class="time-btn" data-time="180" data-inc="2">3+2</button>
+          <button class="time-btn" data-time="300" data-inc="3">5+3</button>
+          <button class="time-btn" data-time="600" data-inc="5">10+5</button>
+          <button class="time-btn" data-time="900" data-inc="10">15+10</button>
+        </div>
+      </div>
+      <div class="newgame-field">
+        <label>Board Theme</label>
+        <div id="theme-btns">
+          <button class="theme-btn active" data-theme="classic" title="Classic" style="--t-l:#f0d9b5;--t-d:#b58863"></button>
+          <button class="theme-btn" data-theme="ocean" title="Ocean" style="--t-l:#dee3e6;--t-d:#8ca2ad"></button>
+          <button class="theme-btn" data-theme="forest" title="Forest" style="--t-l:#ffffdd;--t-d:#86a666"></button>
+          <button class="theme-btn" data-theme="coral" title="Coral" style="--t-l:#f0e9c5;--t-d:#b85c38"></button>
+          <button class="theme-btn" data-theme="purple" title="Purple" style="--t-l:#e8d8f0;--t-d:#7b5ea7"></button>
+          <button class="theme-btn" data-theme="slate" title="Slate" style="--t-l:#d9d9d9;--t-d:#6e7f8a"></button>
+        </div>
+      </div>
+      <div id="newgame-actions">
+        <button id="newgame-confirm-btn">Start Game</button>
+        <button id="newgame-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resign confirmation modal -->
+  <div id="resign-modal" role="dialog" aria-modal="true" aria-labelledby="resign-modal-heading">
+    <div id="resign-card">
+      <span class="material-symbols-outlined resign-modal-icon">sports_score</span>
+      <p id="resign-modal-heading">Are you sure you want to resign?</p>
+      <div id="resign-actions">
+        <button id="resign-confirm-btn">
+          <span class="material-symbols-outlined">flag</span>
+          Resign
+        </button>
+        <button id="resign-cancel-btn">
+          <span class="material-symbols-outlined">close</span>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Promotion modal -->
+  <div id="promotion-modal">
+    <div id="promotion-content">
+      <div id="promo-buttons">
+        <button class="promo-btn" data-piece="q"><img src="pieces/cburnett/wQ.svg" draggable="false"><small>Queen</small></button>
+        <button class="promo-btn" data-piece="r"><img src="pieces/cburnett/wR.svg" draggable="false"><small>Rook</small></button>
+        <button class="promo-btn" data-piece="b"><img src="pieces/cburnett/wB.svg" draggable="false"><small>Bishop</small></button>
+        <button class="promo-btn" data-piece="n"><img src="pieces/cburnett/wN.svg" draggable="false"><small>Knight</small></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game over overlay -->
+  <div id="gameover-overlay" role="dialog" aria-modal="true" aria-live="assertive">
+    <div id="gameover-card">
+      <button id="gameover-close" class="icon-btn" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <div id="gameover-icon"></div>
+      <h2 id="gameover-title"></h2>
+      <p id="gameover-subtitle"></p>
+      <div id="gameover-actions">
+        <button id="gameover-analyze-btn">
+          <span class="material-symbols-outlined">analytics</span>
+          Analyze
+        </button>
+        <button id="gameover-btn">
+          <span class="material-symbols-outlined">add_circle</span>
+          New Game
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Engine settings modal -->
+  <div id="ceval-modal" role="dialog" aria-modal="true" aria-labelledby="ceval-modal-title">
+    <div id="ceval-card">
+      <div id="ceval-modal-header">
+        <h2 id="ceval-modal-title">Engine settings</h2>
+        <button id="ceval-close" class="icon-btn" title="Close" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <label class="ceval-setting">
+        <span>Multiple lines</span>
+        <input type="range" id="ceval-multipv" min="0" max="5" step="1" value="3" />
+        <span id="ceval-multipv-value">3 / 5</span>
+      </label>
+      <label class="ceval-setting">
+        <span>Best move arrows</span>
+        <input type="checkbox" id="ceval-arrows" checked />
+      </label>
+    </div>
+  </div>
+
+  <!-- Import PGN modal -->
+  <div id="import-modal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+    <div id="import-card">
+      <div id="import-header">
+        <h2 id="import-modal-title">Import Game</h2>
+        <button id="import-close" class="icon-btn" title="Close" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div id="lichess-import">
+        <div id="lichess-user-row">
+          <span class="material-symbols-outlined">person</span>
+          <span id="lichess-user-name"></span>
+          <span class="lichess-user-sub">Lichess</span>
+        </div>
+        <div id="lichess-categories">
+          <button class="lichess-cat" data-perf="blitz">
+            <span class="material-symbols-outlined">local_fire_department</span>
+            Blitz
+          </button>
+          <button class="lichess-cat active" data-perf="rapid">
+            <span class="material-symbols-outlined">timer</span>
+            Rapid
+          </button>
+          <button class="lichess-cat" data-perf="bullet">
+            <span class="material-symbols-outlined">bolt</span>
+            Bullet
+          </button>
+        </div>
+        <button id="lichess-randomize-btn">
+          <span class="material-symbols-outlined">casino</span>
+          Randomize
+        </button>
+        <div id="lichess-games-list"></div>
+      </div>
+      <div class="import-divider"><span>or paste PGN</span></div>
+      <div id="import-paste-row">
+        <textarea id="import-pgn-input" placeholder="Paste your PGN here…" spellcheck="false" rows="2"></textarea>
+        <button id="import-load-btn">Load</button>
+      </div>
+      <p id="import-error"></p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <!-- Firebase SDKs (compat build — no bundler needed) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js" onerror="void 0"></script>
+  <script src="app.js?v=8"></script>
+  <a href="../" style="position:fixed;left:12px;bottom:12px;z-index:99999;padding:6px 12px;border-radius:6px;background:rgba(0,0,0,.6);color:white;font:13px system-ui,sans-serif;text-decoration:none">← Projects</a>
+</body>
+</html>
