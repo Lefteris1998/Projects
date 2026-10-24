@@ -6,28 +6,53 @@
   <title>Haunt Filter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
   <link rel="stylesheet" href="style.css">
+  <!-- Material Design 3 components (Google's @material/web) -->
+  <script type="module">import 'https://cdn.jsdelivr.net/npm/@material/web@2.4.1/all.js/+esm';</script>
+  <style id="page-transition">
+    /* smooth hand-off between the projects page and each project (cross-document view transitions, Chrome/Edge):
+       the old page sinks away into a blur while the new one eases in from the dark */
+    @view-transition { navigation: auto; }
+    ::view-transition-group(root) { animation-duration: 0.8s; }
+    ::view-transition-old(root) { animation: pt-out 0.45s ease-in both; }
+    ::view-transition-new(root) { animation: pt-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes pt-out { to { opacity: 0; filter: blur(6px); } }
+    @keyframes pt-in { from { opacity: 0; transform: scale(1.035); filter: blur(10px); } }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+  </style>
 </head>
 <body>
   <header class="bar">
-    <a class="back" href="../">← all projects</a>
-    <h1>Haunt Filter</h1>
+    <md-filled-tonal-icon-button class="back" href="../" aria-label="All projects" title="All projects"><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
+    <h1 class="logo-h"><span class="sr">Haunt Filter</span><canvas id="hfLogo" aria-hidden="true"></canvas></h1>
     <div class="tools">
-      <button class="btn" id="openBtn" title="Open an image (Ctrl+O)">New image</button>
-      <button class="btn" id="cropBtn" title="Crop before the filter (R)" disabled>Crop</button>
-      <button class="btn" id="cmpBtn" title="Toggle the untouched original (C)" aria-pressed="false">Preview original</button>
+      <md-filled-tonal-button id="openBtn" title="Open an image" aria-label="New image"><md-icon slot="icon">add_photo_alternate</md-icon><span class="lbl">New image</span></md-filled-tonal-button>
+      <md-filled-tonal-button id="cropBtn" title="Crop before the filter" aria-label="Crop" disabled><md-icon slot="icon">crop</md-icon><span class="lbl">Crop</span></md-filled-tonal-button>
+      <md-filter-chip id="cmpBtn" label="Preview original" title="Toggle the untouched original"></md-filter-chip>
       <!-- dev only, delete before shipping -->
-      <details class="debug" id="debug">
-        <summary class="btn">Debug</summary>
-        <div class="menu">
-          <label><input type="checkbox" id="multiToggle"> Multi-image view</label>
-          <button class="btn" id="multiAdd">Add images (up to 10)</button>
-          <button class="btn" id="multiClear">Clear images</button>
-          <p>← / → steps through presets</p>
-        </div>
-      </details>
-      <button class="go" id="exportBtn" title="Export (Ctrl+S)" disabled>Export</button>
+      <span class="anchor">
+        <md-text-button id="debugBtn" aria-label="Debug"><md-icon slot="icon">bug_report</md-icon><span class="lbl">Debug</span></md-text-button>
+        <md-menu id="debug" anchor="debugBtn" anchor-corner="end-end" menu-corner="start-end">
+          <md-menu-item id="multiToggle" keep-open><md-icon slot="start" id="multiIcon">check_box_outline_blank</md-icon><div slot="headline">Multi-image view</div></md-menu-item>
+          <md-menu-item id="multiAdd"><md-icon slot="start">add_photo_alternate</md-icon><div slot="headline">Add images (up to 10)</div></md-menu-item>
+          <md-menu-item id="multiClear"><md-icon slot="start">delete_sweep</md-icon><div slot="headline">Clear images</div></md-menu-item>
+        </md-menu>
+      </span>
+      <md-filled-button id="exportBtn" title="Export" disabled><md-icon slot="icon">download</md-icon>Export</md-filled-button>
+      <!-- phone: everything except New image lives in this menu -->
+      <span class="anchor m-only">
+        <md-icon-button id="moreBtn" aria-label="More actions"><md-icon>more_vert</md-icon></md-icon-button>
+        <md-menu id="moreMenu" anchor="moreBtn" anchor-corner="end-end" menu-corner="start-end">
+          <md-menu-item id="mCrop" disabled><md-icon slot="start">crop</md-icon><div slot="headline">Crop</div></md-menu-item>
+          <md-menu-item id="mCompare" keep-open><md-icon slot="start" id="mCompareIcon">check_box_outline_blank</md-icon><div slot="headline">Preview original</div></md-menu-item>
+          <md-divider role="separator" tabindex="-1"></md-divider>
+          <md-menu-item id="mMulti" keep-open><md-icon slot="start" id="mMultiIcon">check_box_outline_blank</md-icon><div slot="headline">Multi-image view (debug)</div></md-menu-item>
+          <md-menu-item id="mAdd"><md-icon slot="start">add_photo_alternate</md-icon><div slot="headline">Add images (debug)</div></md-menu-item>
+          <md-menu-item id="mClear"><md-icon slot="start">delete_sweep</md-icon><div slot="headline">Clear images (debug)</div></md-menu-item>
+        </md-menu>
+      </span>
     </div>
   </header>
 
@@ -36,70 +61,100 @@
       <canvas id="view" hidden></canvas>
       <label class="drop" id="drop" for="file">
         <b>Drop an image here</b>
-        <span>or click to open, or paste with Ctrl+V</span>
+        <span class="fine">or click to open, or paste it in</span>
+        <span class="coarse">or tap to pick one</span>
       </label>
       <div class="info" id="info"></div>
       <div class="grid" id="grid" hidden></div>
+      <div class="zoom" id="zoom" aria-hidden="true"><canvas id="zoomCv"></canvas><span class="zoomname" id="zoomName"></span></div>
       <div class="crop" id="crop" hidden>
         <div class="cropwrap" id="cropWrap">
           <canvas id="cropImg"></canvas>
           <div class="cropbox" id="cropBox"><i data-h="nw"></i><i data-h="n"></i><i data-h="ne"></i><i data-h="e"></i><i data-h="se"></i><i data-h="s"></i><i data-h="sw"></i><i data-h="w"></i></div>
         </div>
         <div class="cropbar">
-          <select class="btn" id="cropAspect" title="Aspect ratio">
-            <option value="0">Free</option><option value="orig">Original</option><option value="1">1:1</option><option value="0.8">4:5</option>
-            <option value="1.5">3:2</option><option value="0.6667">2:3</option><option value="1.7778">16:9</option><option value="0.5625">9:16</option>
-          </select>
+          <md-outlined-select id="cropAspect" label="Aspect" value="0">
+            <md-select-option value="0" selected><div slot="headline">Free</div></md-select-option>
+            <md-select-option value="orig"><div slot="headline">Original</div></md-select-option>
+            <md-select-option value="1"><div slot="headline">1:1</div></md-select-option>
+            <md-select-option value="0.8"><div slot="headline">4:5</div></md-select-option>
+            <md-select-option value="1.5"><div slot="headline">3:2</div></md-select-option>
+            <md-select-option value="0.6667"><div slot="headline">2:3</div></md-select-option>
+            <md-select-option value="1.7778"><div slot="headline">16:9</div></md-select-option>
+            <md-select-option value="0.5625"><div slot="headline">9:16</div></md-select-option>
+          </md-outlined-select>
           <span class="cropsize" id="cropSize"></span>
-          <button class="btn" id="cropReset">Full image</button>
-          <button class="btn" id="cropCancel">Cancel</button>
-          <button class="go" id="cropApply">Apply</button>
+          <md-text-button id="cropReset"><md-icon slot="icon">fit_screen</md-icon>Full image</md-text-button>
+          <md-outlined-button id="cropCancel">Cancel</md-outlined-button>
+          <md-filled-button id="cropApply"><md-icon slot="icon">check</md-icon>Apply</md-filled-button>
         </div>
       </div>
     </section>
     <aside class="panel" id="panel"></aside>
   </main>
 
-  <div class="modal" id="exportBox" hidden>
-    <div class="box">
-      <h2>Export</h2>
-      <div class="seg" id="fmt">
-        <button data-f="png" class="on">PNG <small>lossless</small></button>
-        <button data-f="jpg">JPEG <small>max quality</small></button>
-        <button data-f="video">Video <small>with motion</small></button>
-        <button data-f="gif">GIF <small>looping</small></button>
-      </div>
-      <label class="field"><span>Size</span><select id="exSize"></select></label>
-      <label class="field" id="durRow" hidden><span>Length</span><select id="exDur">
-        <option value="3">3 seconds</option><option value="5" selected>5 seconds</option><option value="8">8 seconds</option><option value="12">12 seconds</option>
-      </select></label>
-      <label class="field" id="fpsRow" hidden><span>Frame rate</span><select id="exFps">
-        <option value="10">10 fps (small file)</option><option value="20" selected>20 fps</option><option value="25">25 fps (smoothest)</option>
-      </select></label>
+  <md-dialog id="exportBox">
+    <div slot="headline" class="dhead">Export</div>
+    <form slot="content" method="dialog" class="dbody">
+      <md-chip-set id="fmt">
+        <md-filter-chip data-f="png" label="PNG" selected></md-filter-chip>
+        <md-filter-chip data-f="jpg" label="JPEG"></md-filter-chip>
+        <md-filter-chip data-f="video" label="Video"></md-filter-chip>
+        <md-filter-chip data-f="gif" label="GIF"></md-filter-chip>
+      </md-chip-set>
+      <md-outlined-select id="exSize" label="Size"></md-outlined-select>
+      <md-outlined-select id="exDur" label="Length" value="5" hidden>
+        <md-select-option value="3"><div slot="headline">3 seconds</div></md-select-option>
+        <md-select-option value="5" selected><div slot="headline">5 seconds</div></md-select-option>
+        <md-select-option value="8"><div slot="headline">8 seconds</div></md-select-option>
+        <md-select-option value="12"><div slot="headline">12 seconds</div></md-select-option>
+      </md-outlined-select>
+      <md-outlined-select id="exFps" label="Frame rate" value="20" hidden>
+        <md-select-option value="10"><div slot="headline">10 fps (small file)</div></md-select-option>
+        <md-select-option value="20" selected><div slot="headline">20 fps</div></md-select-option>
+        <md-select-option value="25"><div slot="headline">25 fps (smoothest)</div></md-select-option>
+      </md-outlined-select>
       <p class="note" id="exNote"></p>
-      <div class="acts">
-        <button class="btn" id="exCancel">Cancel</button>
-        <button class="go" id="exSave">Save as…</button>
-      </div>
+    </form>
+    <div slot="actions">
+      <md-text-button id="exCancel">Cancel</md-text-button>
+      <md-filled-button id="exSave"><md-icon slot="icon">save</md-icon>Save as…</md-filled-button>
     </div>
-  </div>
+  </md-dialog>
 
-  <div class="modal" id="presetBox" hidden>
-    <div class="box">
-      <h2>Export preset</h2>
-      <label class="field"><span>Name</span><input id="presetName" placeholder="My preset" maxlength="40"></label>
-      <textarea id="presetCode" readonly rows="5" spellcheck="false"></textarea>
+  <md-dialog id="presetBox">
+    <div slot="headline" class="dhead">Export preset</div>
+    <form slot="content" method="dialog" class="dbody">
+      <md-outlined-text-field id="presetName" label="Name" placeholder="My preset" maxlength="40"></md-outlined-text-field>
+      <md-outlined-text-field id="presetCode" label="Code" type="textarea" rows="5" readonly spellcheck="false"></md-outlined-text-field>
       <p class="note">Copy this and paste it to Claude to add it to the app's preset list.</p>
-      <div class="acts">
-        <button class="btn" id="presetClose">Close</button>
-        <button class="go" id="presetCopy">Copy code</button>
-      </div>
+    </form>
+    <div slot="actions">
+      <md-text-button id="presetClose">Close</md-text-button>
+      <md-filled-button id="presetCopy"><md-icon slot="icon">content_copy</md-icon>Copy code</md-filled-button>
     </div>
-  </div>
+  </md-dialog>
+
+  <!-- phone: the two actions you reach for most, always under your thumb -->
+  <footer class="mfoot m-only">
+    <md-filled-tonal-button id="mRandom"><md-icon slot="icon">casino</md-icon>Random</md-filled-tonal-button>
+    <md-filled-button id="mExport" disabled><md-icon slot="icon">download</md-icon>Export</md-filled-button>
+  </footer>
 
   <div class="toast" id="toast" hidden></div>
+  <canvas id="cursor" popover="manual" aria-hidden="true"></canvas>
   <input type="file" id="file" accept="image/*" hidden>
   <input type="file" id="multiFile" accept="image/*" multiple hidden>
   <script src="app.js"></script>
+  <script src="cursor.js"></script>
+  <script src="pixel-logo.js"></script>
+  <script>
+    // the title as a small live pixel logo, same as the Projects page's (squares only at this size: glyphs would be mush)
+    (() => {
+      const phone = matchMedia('(max-width: 820px)');
+      pixelLogo(document.getElementById('hfLogo'), { text: 'HAUNT FILTER', cell: phone.matches ? 2 : 3, pad: 10,
+        height: () => (phone.matches ? 26 : 34), maxWidth: () => (phone.matches ? innerWidth - 252 : Infinity) });
+    })();
+  </script>
 </body>
 </html>
