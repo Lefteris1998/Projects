@@ -1058,6 +1058,7 @@
   function renderWeapons() {
     $('weapons').innerHTML = WEAPONS.map((w) => `
       <button class="wpn ${w.id === weapon.id ? 'on' : ''} ${w.legendary ? 'legendary' : ''}" data-id="${w.id}">
+        <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
         <img src="${w.img}" alt="">
         <b>${w.name}</b>
         <small>${w.blurb}</small>
@@ -1076,6 +1077,7 @@
     const best = store.get('fb-best', {}), cleared = store.get('fb-cleared', {});
     $('levels').innerHTML = LEVELS.map((L, i) => `
       <button class="lvl-btn" data-i="${i}">
+        <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
         <span class="n">${i + 1}</span>
         <span class="t"><b>${L.name}</b><small>Slice ${L.target} · ${L.blurb}</small></span>
         <span class="best ${cleared[i] ? 'cleared' : ''}">${cleared[i] ? '✓ ' : ''}${best[i] ? `Best ${best[i]}` : ''}</span>
