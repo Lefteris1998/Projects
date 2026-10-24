@@ -3,37 +3,44 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1b1036" />
+  <meta name="theme-color" content="#0c0505" />
   <title>Join Quip Brawl</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Ccircle cx=%278%27 cy=%278%27 r=%277%27 fill=%27%23ffd23f%27/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%272%27 y=%272%27 width=%2712%27 height=%2712%27 fill=%27%23c4121f%27/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
   <link rel="stylesheet" href="style.css">
+  <script type="module">import 'https://cdn.jsdelivr.net/npm/@material/web@2.4.1/all.js/+esm';</script>
 </head>
 <body class="phone">
   <main>
     <div class="top">
-      <p class="logo"><b>Quip</b> <i>Brawl</i></p>
+      <h1 class="logo" id="logo"><span class="fallback">Quip Brawl</span></h1>
       <div class="me" id="me"></div>
     </div>
 
     <form class="screen" id="join-form" autocomplete="off">
       <h1>Join a game</h1>
-      <div>
-        <label for="code">Room code</label>
-        <input id="code" class="code" maxlength="4" inputmode="text" autocapitalize="characters" placeholder="ABCD" required>
-      </div>
-      <div>
-        <label for="name">Your name</label>
-        <input id="name" maxlength="12" placeholder="Max 12 letters" required>
-      </div>
-      <button class="btn" type="submit" id="join-btn">Join</button>
+      <md-outlined-text-field id="code" class="code" label="Room code" maxlength="4" autocapitalize="characters" placeholder="ABCD" required></md-outlined-text-field>
+      <md-outlined-text-field id="name" label="Your name" maxlength="12" placeholder="Max 12 letters" required></md-outlined-text-field>
+      <md-filled-button type="submit" id="join-btn"><md-icon slot="icon">login</md-icon>Join</md-filled-button>
       <div class="error" id="join-error"></div>
     </form>
 
     <section class="screen hidden" id="game"></section>
   </main>
+  <canvas id="cursor" popover="manual" aria-hidden="true"></canvas>
   <script src="play.js"></script>
+  <!-- shared with the Projects page and Haunt Filter; the page still works (plain logo) without them -->
+  <script src="../haunt-filter/pixel-logo.js"></script>
+  <script src="../haunt-filter/cursor.js"></script>
+  <script>
+    if (window.pixelLogo) {
+      const logo = document.getElementById('logo'), cv = document.createElement('canvas');
+      cv.setAttribute('aria-hidden', 'true'); logo.append(cv); logo.classList.add('live');
+      pixelLogo(cv, { text: 'QUIP BRAWL', cell: 2, pad: 8, height: 26 });
+    }
+  </script>
 </body>
 </html>

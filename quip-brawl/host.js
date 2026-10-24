@@ -52,7 +52,7 @@ function action(type, extra) {
 
 function chip(p, extra = '') {
   return `<div class="chip ${extra} ${p.connected ? '' : 'off'}" style="--c:${p.color}">
-    <span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.vip ? '<span class="tag">VIP</span>' : ''}
+    <span class="dot" style="background:${p.color};--c:${p.color}"></span>${esc(p.name)}${p.vip ? '<span class="tag">VIP</span>' : ''}
   </div>`;
 }
 
@@ -70,7 +70,7 @@ const screens = {
     const need = v.minPlayers - v.players.filter(p => p.connected).length;
     const slots = Array.from({ length: Math.max(0, need) }, () => '<div class="chip empty">waiting…</div>').join('');
     const roster = v.players.map(p => `<div class="chip ${p.connected ? '' : 'off'}" style="--c:${p.color}">
-        <span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.vip ? '<span class="tag">VIP</span>' : ''}
+        <span class="dot" style="background:${p.color};--c:${p.color}"></span>${esc(p.name)}${p.vip ? '<span class="tag">VIP</span>' : ''}
         <button class="x" data-kick="${p.id}" title="Remove">✕</button></div>`).join('');
     return {
       key: 'lobby',
@@ -88,7 +88,7 @@ const screens = {
         ${need > 0
           ? `<h2>Need ${need} more player${need === 1 ? '' : 's'} (${v.minPlayers}–${v.maxPlayers})</h2>`
           : `<h2>Everyone in? The VIP starts the game from their phone.</h2>
-             <button class="btn" id="start">Start game</button>`}`,
+             <md-filled-button class="big-btn" id="start"><md-icon slot="icon">play_arrow</md-icon>Start game</md-filled-button>`}`,
     };
   },
 
@@ -97,7 +97,7 @@ const screens = {
     return {
       key: `answer${v.round}`,
       html: `
-        <h2 class="rise">Round ${v.round} of ${v.rounds}${v.round > 1 ? ` · points ×${v.round}` : ''}</h2>
+        <h2 class="rise kicker">Round ${v.round} of ${v.rounds}${v.round > 1 ? ` · points ×${v.round}` : ''}</h2>
         <h1 class="rise">Answer your prompts on your phone!</h1>
         <div class="roster">${v.players.map(p => chip(p, done.has(p.id) ? 'done' : '')).join('')}</div>`,
     };
@@ -110,7 +110,7 @@ const screens = {
     return {
       key: `vote${v.round}-${pr.index}`,
       html: `
-        <h2>Matchup ${pr.index} of ${pr.total}</h2>
+        <h2 class="kicker">Matchup ${pr.index} of ${pr.total}</h2>
         <h1 class="rise">${esc(pr.text)}</h1>
         <div class="versus">
           ${answerCard(pr.options[0])}<div class="vs pop">VS</div>${answerCard(pr.options[1])}
@@ -132,14 +132,14 @@ const screens = {
         ${o.sweep ? '<div class="sweep">CLEAN SWEEP!</div>' : ''}
         ${o.points ? `<div class="pts">+${o.points}</div>` : ''}
         <div class="text ${o.text ? '' : 'none'}">${o.text ? esc(o.text) : 'no answer'}</div>
-        <div class="by"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</div>
+        <div class="by"><span class="dot" style="background:${p.color};--c:${p.color}"></span>${esc(p.name)}</div>
         <div class="votes">${o.votes} vote${o.votes === 1 ? '' : 's'}${names ? ` · ${names}` : ''}</div>
       </div>`;
     };
     return {
       key: `reveal${v.round}-${pr.index}`,
       html: `
-        <h2>Matchup ${pr.index} of ${pr.total}</h2>
+        <h2 class="kicker">Matchup ${pr.index} of ${pr.total}</h2>
         <h1>${esc(pr.text)}</h1>
         <div class="versus">${card(a, b)}<div class="vs">VS</div>${card(b, a)}</div>`,
     };
@@ -155,10 +155,10 @@ const screens = {
     return {
       key: 'final',
       html: `
-        <h2 class="rise">${top.length > 1 ? "It's a tie!" : 'The winner is'}</h2>
+        <h2 class="rise kicker">${top.length > 1 ? "It's a tie!" : 'The winner is'}</h2>
         <div class="winner pop">${top.map(p => esc(p.name)).join(' & ')}</div>
         ${board(v.players)}
-        <button class="btn" id="again">Play again</button>`,
+        <md-filled-button class="big-btn" id="again"><md-icon slot="icon">replay</md-icon>Play again</md-filled-button>`,
     };
   },
 };

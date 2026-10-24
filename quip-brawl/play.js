@@ -66,33 +66,34 @@ form.addEventListener('submit', async e => {
 
 const timerHtml = '<span class="timer hidden" id="timer"></span>';
 
-function wait(emoji, title, sub) {
-  return `<div class="center"><div class="big-emoji">${emoji}</div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>`;
+// a waiting screen: one big glowing Material icon, a title and a line under it
+function wait(icon, title, sub) {
+  return `<div class="center"><md-icon class="big-icon" aria-hidden="true">${icon}</md-icon><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>`;
 }
 
 const screens = {
   lobby(v) {
     const need = v.minPlayers - v.playerCount;
-    if (!v.me.vip) return { key: `lobby${need > 0}`, html: wait('🎉', "You're in!", 'Waiting for the VIP to start the game…') };
+    if (!v.me.vip) return { key: `lobby${need > 0}`, html: wait('celebration', "You're in!", 'Waiting for the VIP to start the game…') };
     return {
       key: `lobby-vip${Math.max(0, need)}`,
-      html: `<div class="center"><div class="big-emoji">👑</div><h1>You're the VIP</h1>
+      html: `<div class="center"><md-icon class="big-icon" aria-hidden="true">workspace_premium</md-icon><h1>You're the VIP</h1>
         <p>${need > 0 ? `Waiting for ${need} more player${need === 1 ? '' : 's'}…` : 'Start when everyone is in.'}</p></div>
-        <button class="btn" id="start" ${need > 0 ? 'disabled' : ''}>Everybody's in!</button>
+        <md-filled-button id="start" ${need > 0 ? 'disabled' : ''}><md-icon slot="icon">play_arrow</md-icon>Everybody's in!</md-filled-button>
         <div class="error" id="err"></div>`,
     };
   },
 
   answer(v) {
-    if (!v.todo) return { key: `answer-done${v.round}`, html: wait('✅', 'All done!', 'Waiting for everyone else to finish.') };
+    if (!v.todo) return { key: `answer-done${v.round}`, html: wait('task_alt', 'All done!', 'Waiting for everyone else to finish.') };
     return {
       key: `answer${v.round}-${v.todo.id}`,
       html: `<p>Prompt ${3 - v.todo.left} of 2 · ${timerHtml}</p>
         <div class="card prompt">${esc(v.todo.text)}</div>
         <form id="answer-form">
-          <textarea id="answer" maxlength="60" placeholder="Be funny…" required></textarea>
+          <md-outlined-text-field id="answer" type="textarea" rows="3" maxlength="60" label="Your answer" placeholder="Be funny…" required></md-outlined-text-field>
           <div class="count" id="count">0 / 60</div>
-          <button class="btn pink" type="submit">Send it</button>
+          <md-filled-button type="submit"><md-icon slot="icon">send</md-icon>Send it</md-filled-button>
         </form>
         <div class="error" id="err"></div>`,
       init() {
@@ -102,7 +103,7 @@ const screens = {
         box.focus();
         document.getElementById('answer-form').addEventListener('submit', async e => {
           e.preventDefault();
-          const btn = e.target.querySelector('button');
+          const btn = e.target.querySelector('md-filled-button');
           btn.disabled = true;
           try { await action('answer', { promptId: v.todo.id, text: box.value }); }
           catch (err) { document.getElementById('err').textContent = err.message; btn.disabled = false; }
@@ -112,13 +113,13 @@ const screens = {
   },
 
   vote(v) {
-    if (v.vote.mine) return { key: `vote-mine${v.round}-${v.vote.key}`, html: wait('😬', "That's your answer up there!", "You can't vote on this one. Sit tight.") };
+    if (v.vote.mine) return { key: `vote-mine${v.round}-${v.vote.key}`, html: wait('sentiment_stressed', "That's your answer up there!", "You can't vote on this one. Sit tight.") };
     const picked = v.vote.voted;
     return {
       key: `vote${v.round}-${v.vote.key}-${picked}`,
       html: `<p>Which is funnier? ${timerHtml}</p>
         <div class="card prompt">${esc(v.vote.text)}</div>
-        ${v.vote.options.map((t, i) => `<button class="choice ${picked === i ? 'picked' : ''}" data-side="${i}" ${picked !== null ? 'disabled' : ''}>${t ? esc(t) : '<em>no answer</em>'}</button>`).join('')}
+        ${v.vote.options.map((t, i) => `<button class="choice ${picked === i ? 'picked' : ''}" data-side="${i}" ${picked !== null ? 'disabled' : ''}><md-ripple></md-ripple>${t ? esc(t) : '<em>no answer</em>'}</button>`).join('')}
         <p style="text-align:center">${picked !== null ? 'Vote locked in!' : ''}</p>
         <div class="error" id="err"></div>`,
       init() {
@@ -131,16 +132,16 @@ const screens = {
     };
   },
 
-  reveal(v) { return { key: `reveal${v.me.score}`, html: wait('👀', 'Eyes on the big screen!', `You have ${v.me.score} points.`) }; },
+  reveal(v) { return { key: `reveal${v.me.score}`, html: wait('visibility', 'Eyes on the big screen!', `You have ${v.me.score} points.`) }; },
 
-  scores(v) { return { key: `scores${v.round}`, html: wait('📊', `You're #${v.rank}`, `${v.me.score} points after round ${v.round} of ${v.rounds}.`) }; },
+  scores(v) { return { key: `scores${v.round}`, html: wait('leaderboard', `You're #${v.rank}`, `${v.me.score} points after round ${v.round} of ${v.rounds}.`) }; },
 
   final(v) {
-    const title = v.rank === 1 ? 'You won! 🏆' : `You finished #${v.rank}`;
+    const title = v.rank === 1 ? 'You won!' : `You finished #${v.rank}`;
     return {
       key: `final${v.me.vip}`,
-      html: `${wait(v.rank === 1 ? '🥳' : '🎤', title, `${v.me.score} points.`)}
-        ${v.me.vip ? '<button class="btn" id="again">Play again</button>' : '<p style="text-align:center">The VIP can start a new game.</p>'}`,
+      html: `${wait(v.rank === 1 ? 'emoji_events' : 'mic', title, `${v.me.score} points.`)}
+        ${v.me.vip ? '<md-filled-button id="again"><md-icon slot="icon">replay</md-icon>Play again</md-filled-button>' : '<p style="text-align:center">The VIP can start a new game.</p>'}`,
     };
   },
 };

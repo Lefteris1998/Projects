@@ -11,6 +11,7 @@ const PROMPTS = require('./prompts.js');
 
 const ROOT = __dirname;
 const LAN_PORT = Number(process.env.PORT || process.env.GAME_PORT) || 8081;
+const SHARED = Object.fromEntries(['pixel-logo.js', 'cursor.js'].map(f => [`/haunt-filter/${f}`, path.join(__dirname, '..', 'haunt-filter', f)]));
 const ROUNDS = 3;
 const ANSWER_MS = 90000, VOTE_MS = 20000, REVEAL_MS = 8000, SCORES_MS = 9000;
 const MIN_PLAYERS = 3, MAX_PLAYERS = 8;
@@ -378,8 +379,10 @@ async function handleRequest(req, res) {
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
     const rel = p === '/' ? 'join.html' : p === '/host' ? 'index.html' : p;
-    const file = path.normalize(path.join(ROOT, rel));
-    if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, 'not found');
+    // the logo and cursor scripts are shared with the other projects and live in the Haunt Filter folder
+    const shared = SHARED[p];
+    const file = shared || path.normalize(path.join(ROOT, rel));
+    if (!shared && !file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, 'not found');
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     fs.createReadStream(file).pipe(res);
   } catch (e) {
