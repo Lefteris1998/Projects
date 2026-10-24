@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Haunt Filter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="back" href="../">← all projects</a>
+    <h1>Haunt Filter</h1>
+    <div class="tools">
+      <button class="btn" id="openBtn" title="Open an image (Ctrl+O)">New image</button>
+      <button class="btn" id="cropBtn" title="Crop before the filter (R)" disabled>Crop</button>
+      <button class="btn" id="cmpBtn" title="Toggle the untouched original (C)" aria-pressed="false">Preview original</button>
+      <!-- dev only, delete before shipping -->
+      <details class="debug" id="debug">
+        <summary class="btn">Debug</summary>
+        <div class="menu">
+          <label><input type="checkbox" id="multiToggle"> Multi-image view</label>
+          <button class="btn" id="multiAdd">Add images (up to 10)</button>
+          <button class="btn" id="multiClear">Clear images</button>
+          <p>← / → steps through presets</p>
+        </div>
+      </details>
+      <button class="go" id="exportBtn" title="Export (Ctrl+S)" disabled>Export</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="stage" id="stage">
+      <canvas id="view" hidden></canvas>
+      <label class="drop" id="drop" for="file">
+        <b>Drop an image here</b>
+        <span>or click to open, or paste with Ctrl+V</span>
+      </label>
+      <div class="info" id="info"></div>
+      <div class="grid" id="grid" hidden></div>
+      <div class="crop" id="crop" hidden>
+        <div class="cropwrap" id="cropWrap">
+          <canvas id="cropImg"></canvas>
+          <div class="cropbox" id="cropBox"><i data-h="nw"></i><i data-h="n"></i><i data-h="ne"></i><i data-h="e"></i><i data-h="se"></i><i data-h="s"></i><i data-h="sw"></i><i data-h="w"></i></div>
+        </div>
+        <div class="cropbar">
+          <select class="btn" id="cropAspect" title="Aspect ratio">
+            <option value="0">Free</option><option value="orig">Original</option><option value="1">1:1</option><option value="0.8">4:5</option>
+            <option value="1.5">3:2</option><option value="0.6667">2:3</option><option value="1.7778">16:9</option><option value="0.5625">9:16</option>
+          </select>
+          <span class="cropsize" id="cropSize"></span>
+          <button class="btn" id="cropReset">Full image</button>
+          <button class="btn" id="cropCancel">Cancel</button>
+          <button class="go" id="cropApply">Apply</button>
+        </div>
+      </div>
+    </section>
+    <aside class="panel" id="panel"></aside>
+  </main>
+
+  <div class="modal" id="exportBox" hidden>
+    <div class="box">
+      <h2>Export</h2>
+      <div class="seg" id="fmt">
+        <button data-f="png" class="on">PNG <small>lossless</small></button>
+        <button data-f="jpg">JPEG <small>max quality</small></button>
+        <button data-f="video">Video <small>with motion</small></button>
+        <button data-f="gif">GIF <small>looping</small></button>
+      </div>
+      <label class="field"><span>Size</span><select id="exSize"></select></label>
+      <label class="field" id="durRow" hidden><span>Length</span><select id="exDur">
+        <option value="3">3 seconds</option><option value="5" selected>5 seconds</option><option value="8">8 seconds</option><option value="12">12 seconds</option>
+      </select></label>
+      <label class="field" id="fpsRow" hidden><span>Frame rate</span><select id="exFps">
+        <option value="10">10 fps (small file)</option><option value="20" selected>20 fps</option><option value="25">25 fps (smoothest)</option>
+      </select></label>
+      <p class="note" id="exNote"></p>
+      <div class="acts">
+        <button class="btn" id="exCancel">Cancel</button>
+        <button class="go" id="exSave">Save as…</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="presetBox" hidden>
+    <div class="box">
+      <h2>Export preset</h2>
+      <label class="field"><span>Name</span><input id="presetName" placeholder="My preset" maxlength="40"></label>
+      <textarea id="presetCode" readonly rows="5" spellcheck="false"></textarea>
+      <p class="note">Copy this and paste it to Claude to add it to the app's preset list.</p>
+      <div class="acts">
+        <button class="btn" id="presetClose">Close</button>
+        <button class="go" id="presetCopy">Copy code</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <input type="file" id="file" accept="image/*" hidden>
+  <input type="file" id="multiFile" accept="image/*" multiple hidden>
+  <script src="app.js"></script>
+</body>
+</html>
