@@ -7,8 +7,22 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔪</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;600;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;500;600;800&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
+  <!-- Material Design 3 components (Google's @material/web), same version as the Projects page and Haunt Filter -->
+  <script type="module">import 'https://cdn.jsdelivr.net/npm/@material/web@2.4.1/all.js/+esm';</script>
   <link rel="stylesheet" href="style.css">
+  <style id="page-transition">
+    /* smooth hand-off between the projects page and each project (cross-document view transitions, Chrome/Edge):
+       the old page sinks away into a blur while the new one eases in from the dark */
+    @view-transition { navigation: auto; }
+    ::view-transition-group(root) { animation-duration: 0.8s; }
+    ::view-transition-old(root) { animation: pt-out 0.45s ease-in both; }
+    ::view-transition-new(root) { animation: pt-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes pt-out { to { opacity: 0; filter: blur(6px); } }
+    @keyframes pt-in { from { opacity: 0; transform: scale(1.035); filter: blur(10px); } }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+  </style>
 </head>
 <body>
   <div id="stage">
@@ -38,22 +52,25 @@
 
   <div id="banner"><small id="bannerNum"></small><b id="bannerName"></b><span id="bannerGoal"></span></div>
 
+  <!-- the menu wears the Projects page's look: pixel logo, blood-red Material 3 on soot, pixel drips (menu.js) -->
   <section id="menu" class="screen">
     <div class="panel wide">
-      <h1>Fruit<br>Butcher</h1>
-      <p class="tag">Slice the fruit. Don't ask what's inside.</p>
+      <div class="menu-top">
+        <md-filled-tonal-icon-button class="back" href="../" aria-label="All projects" title="All projects"><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
+        <h1 class="logo-h" id="logoWrap"><span class="sr">Fruit Butcher</span><canvas id="fbLogo" aria-hidden="true"></canvas></h1>
+      </div>
       <div class="menu-cols">
         <div>
-          <h3 class="col-h">Level</h3>
+          <h3 class="col-h"><md-icon aria-hidden="true">stairs</md-icon>Level</h3>
           <div class="levels" id="levels"></div>
         </div>
         <div>
-          <h3 class="col-h">Weapon</h3>
+          <h3 class="col-h"><md-icon aria-hidden="true">swords</md-icon>Weapon</h3>
           <div class="weapons" id="weapons"></div>
         </div>
       </div>
       <details class="how">
-        <summary>How to play</summary>
+        <summary><md-icon aria-hidden="true">help</md-icon>How to play</summary>
         <ul>
           <li><b>Click/touch and drag</b> to slash. Several fruit in one swipe = gore combo.</li>
           <li>Let a fruit fall off-screen and you lose a ❤. Five strikes and you're out.</li>
@@ -65,7 +82,6 @@
           <li>Keys: <kbd>P</kbd> pause · <kbd>M</kbd> mute · <kbd>]</kbd> skip level · <kbd>B</kbd> throw a bomb · <kbd>S</kbd> +1 soul (playtest cheats)</li>
         </ul>
       </details>
-      <a class="back" href="../">← All projects</a>
     </div>
   </section>
 
@@ -112,6 +128,8 @@
     </div>
   </section>
 
+  <script src="../haunt-filter/pixel-logo.js"></script>
   <script src="game.js"></script>
+  <script src="menu.js"></script>
 </body>
 </html>

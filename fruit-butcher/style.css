@@ -151,8 +151,6 @@ h2 { font-size: 2.8rem; line-height: 1; }
 .how ul { padding-left: 18px; margin: 8px 0 0; }
 .how li { margin: 4px 0; }
 kbd { padding: 1px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); font: 0.8rem ui-monospace, monospace; }
-.back { display: block; margin-top: 16px; text-align: center; color: var(--dim); text-decoration: none; font-size: 0.9rem; }
-.back:hover { color: var(--text); }
 
 .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
 .btn {
@@ -168,3 +166,84 @@ kbd { padding: 1px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.1)
 .stats { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 0 auto; max-width: 280px; text-align: left; }
 .stats dt { color: var(--dim); }
 .stats dd { margin: 0; font-weight: 800; text-align: right; }
+
+/* ---------- Menu, in the Projects page's look ----------
+   pixel logo, blood-red Material 3 on soot, faint scanlines, cards that lift and bleed square pixel drips (menu.js).
+   The md-sys tokens map Material 3's colour roles onto the palette, same as the Projects page */
+:root {
+  --blood-text: #ef3b45;
+  --ember: #ff7a2e;
+  --ink: #050506;
+  --card: #140808;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --md-ref-typeface-brand: Rubik, system-ui, sans-serif;
+  --md-ref-typeface-plain: Rubik, system-ui, sans-serif;
+  --md-icon-font: 'Material Symbols Outlined';
+  --md-sys-color-primary: var(--blood-text);
+  --md-sys-color-on-primary: #fff;
+  --md-sys-color-secondary-container: #5a1218;
+  --md-sys-color-on-secondary-container: var(--text);
+  --md-sys-color-surface: #0c0505;
+  --md-sys-color-surface-container-high: #211010;
+  --md-sys-color-on-surface: var(--text);
+  --md-sys-color-on-surface-variant: var(--dim);
+  --md-sys-color-outline: #806460;
+  --md-sys-color-outline-variant: #3a2624;
+}
+:not(:defined) { visibility: hidden; } /* Material components stay hidden until they're defined, so nothing flashes unstyled */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* the soot over the board: the fruit still fly behind it, just dimmed */
+#menu { background: radial-gradient(ellipse 120% 70% at 50% -10%, rgba(42, 10, 13, 0.86) 0%, rgba(18, 6, 6, 0.82) 45%, rgba(5, 5, 6, 0.9) 80%); }
+#menu::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px); }
+#menu .panel { position: relative; z-index: 1; background: var(--card); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 16px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 60px rgba(0, 0, 0, 0.6); }
+.menu-top { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.menu-top .back { flex: none; width: 40px; height: 40px; --md-filled-tonal-icon-button-container-shape: 12px; --md-filled-tonal-icon-button-container-width: 40px;
+  --md-filled-tonal-icon-button-container-height: 40px; --md-filled-tonal-icon-button-icon-size: 22px; }
+.logo-h { flex: 1; min-width: 0; margin: 0; line-height: 0; text-shadow: none; }
+.logo-h canvas { display: block; touch-action: pan-y; } /* pixel-logo.js sizes it and pulls it out over its padding */
+
+#menu .col-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+#menu .col-h md-icon { --md-icon-size: 18px; color: var(--ember); }
+
+/* levels and weapons are little cards, like the project cards */
+#menu .lvl-btn, #menu .wpn { position: relative; border-radius: 12px; background: rgba(255, 255, 255, 0.025); border: 1px solid var(--md-sys-color-outline-variant); outline: none;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.25, 1), border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  --md-ripple-hover-color: var(--blood-text); --md-ripple-pressed-color: var(--blood-text); --md-focus-ring-shape: 12px; --md-focus-ring-color: var(--blood-text); }
+#menu .lvl-btn:hover, #menu .wpn:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.03); border-color: rgba(239, 59, 69, 0.55);
+  box-shadow: 0 0 0 1px rgba(239, 59, 69, 0.25), 0 0 30px rgba(196, 18, 31, 0.22), 0 10px 26px rgba(0, 0, 0, 0.5); }
+#menu .lvl-btn .n { border-radius: 6px; background: var(--blood-dark); font: 700 0.95rem var(--mono); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35); }
+#menu .lvl-btn .t b { font: 400 1.25rem/1.1 Creepster, Impact, sans-serif; letter-spacing: 0.03em; text-shadow: 0 2px 0 var(--blood-dark); }
+#menu .lvl-btn .best { font-family: var(--mono); font-size: 0.75rem; }
+#menu .lvl-btn .best.cleared { color: var(--ember); }
+#menu .wpn b { font: 400 1.15rem/1.1 Creepster, Impact, sans-serif; letter-spacing: 0.03em; text-shadow: 0 2px 0 var(--blood-dark); }
+#menu .wpn.on { border-color: var(--blood-text); background: rgba(196, 18, 31, 0.16); box-shadow: inset 0 0 0 1px var(--blood-text), 0 0 24px rgba(196, 18, 31, 0.25); }
+#menu .wpn.legendary b { color: #ff8000; }
+#menu .wpn.legendary.on { border-color: #ff8000; background: rgba(255, 128, 0, 0.12); box-shadow: inset 0 0 0 1px #ff8000, 0 0 18px rgba(60, 220, 255, 0.3); }
+
+#menu .how { margin-top: 20px; padding: 4px 14px; border-radius: 12px; border: 1px solid var(--md-sys-color-outline-variant); background: rgba(255, 255, 255, 0.02); }
+#menu .how summary { display: flex; align-items: center; gap: 8px; padding: 8px 0; list-style: none; font: 800 0.75rem Rubik, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+#menu .how summary::-webkit-details-marker { display: none; }
+#menu .how summary md-icon { --md-icon-size: 18px; color: var(--ember); }
+#menu .how[open] { padding-bottom: 10px; }
+#menu kbd { font-family: var(--mono); }
+
+/* blood, in pixels: a dark ledge where it leaks out, a square column that grows down in steps, then a square drop
+   lets go and falls in steps, and the stain fades. sizes are multiples of 4px so it stays on the grid */
+.drip { position: absolute; width: var(--w); height: 0; margin-left: calc(var(--w) / -2); pointer-events: none; z-index: 5;
+  background: #c4121f; box-shadow: inset calc(var(--w) / 2) 0 0 #9e0c17;
+  animation: drip-grow var(--t) steps(5, end) forwards, drip-life 2.8s steps(7) forwards; }
+.drip::before { content: ''; position: absolute; left: calc(var(--w) * -0.5); top: 0; width: calc(var(--w) * 2); height: 4px; background: #7a0610; }
+.drip::after { content: ''; position: absolute; left: 0; top: 100%; width: var(--w); height: var(--w); background: #ef3b45; box-shadow: inset 0 calc(var(--w) / -2) 0 #c4121f;
+  animation: drop-fall 0.9s steps(9, end) calc(var(--t) + 0.15s) forwards; }
+@keyframes drip-grow { to { height: var(--len); } }
+@keyframes drip-life { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes drop-fall { to { transform: translateY(var(--fall, 160px)); opacity: 0; } }
+
+@media (max-width: 760px) {
+  #menu .lvl-btn, #menu .wpn { border-radius: 12px; }
+  .menu-top { margin-bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { #menu .lvl-btn, #menu .wpn { transition: none; } }
