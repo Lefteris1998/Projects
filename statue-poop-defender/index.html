@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Statue Poop Defender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div class="vignette"></div>
+
+  <!-- the only HUD: how buried you are, what you've got, what's in the gun -->
+  <div class="hud" id="hud">
+    <div class="poop">
+      <span id="covTxt">0%</span>
+      <div class="tube"><i id="covBar"></i></div>
+      <small>hp</small>
+    </div>
+    <div class="stats">
+      <div><small>money</small><b class="cash" id="cash">$0</b></div>
+      <div><svg class="gun-icon" id="gunIcon" viewBox="0 0 120 32" fill="currentColor"></svg><small id="gunName">musket</small><b id="ammo">80</b></div>
+    </div>
+  </div>
+
+  <button class="skill" id="storm" hidden><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span id="stormTxt">Lightning</span><kbd>Q</kbd></button>
+  <button class="skill acid" id="acidBtn" hidden><svg viewBox="0 0 24 24"><path d="M7 3c-1 2-3 4-3 6a3 3 0 0 0 6 0c0-2-2-4-3-6zm10 2c-1 2-3 4-3 6a3 3 0 0 0 6 0c0-2-2-4-3-6zm-5 7c-1 2-3 4-3 6a3 3 0 0 0 6 0c0-2-2-4-3-6z"/></svg><span id="acidTxt">Acid Rain</span><kbd>W</kbd></button>
+
+  <!-- playtest cheats, built by game.js -->
+  <button class="pause-btn" id="pauseBtn" hidden title="Pause (Esc)">❚❚</button>
+  <button class="debug-toggle" id="debugToggle">debug</button>
+  <aside class="debug" id="debug" hidden></aside>
+
+  <section class="shop" id="shop" hidden></section>
+
+  <div class="pause" id="pause" hidden><div class="box"><h2>Paused</h2>
+    <button class="btn" data-p="resume">Resume</button>
+    <button class="btn" data-p="replay">Replay night</button>
+    <button class="btn" data-p="quit">Quit to title</button>
+  </div></div>
+
+  <div id="gate"><div class="gate-box"><h1 id="gateTitle"></h1><p id="gateText"></p><small id="gateSub"></small></div></div>
+
+  <a class="back" href="../">← all projects</a>
+  <script src="game.js"></script>
+</body>
+</html>
