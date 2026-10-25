@@ -1,7 +1,7 @@
 {
   "name": "quip-brawl",
   "version": "1.0.0",
-  "description": "A party game: answer silly prompts on your phone, vote on the funniest.",
+  "description": "A gravity-flip race for 2-8 phones: tap to flip, outrun the pursuer, last one standing wins.",
   "private": true,
   "main": "server.js",
   "scripts": {

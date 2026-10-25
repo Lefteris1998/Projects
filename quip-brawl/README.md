@@ -1,6 +1,8 @@
 # Quip Brawl
 
-A party game for 3–8 players. Each player answers funny prompts on their phone, then everyone votes on the best answer. No npm packages needed.
+A gravity-flip race for 2–8 players, after Gravity Guy. Everyone plays on their own phone. You run on your own; tap anywhere to flip gravity between floor and ceiling. Snag on a wall or fall off the track and the pursuer gets you. Last runner standing wins the round. No npm packages needed.
+
+There's one lobby for everyone: open the page, pick a name, tap Ready. The race starts 3 seconds after everyone is ready, or 10 seconds after at least two are.
 
 ## Play locally (same Wi-Fi)
 
@@ -8,13 +10,16 @@ A party game for 3–8 players. Each player answers funny prompts on their phone
 node server.js
 ```
 
-Open `http://localhost:8081/host` on the big screen (TV/laptop). Players scan the QR code or go to the address shown.
+Every phone opens the address it prints (`http://<your-computer's-ip>:8081/`).
 
-## Play online with friends
+## Play online
 
-Deploy to any Node host (Render, Railway, Fly.io…). Start command: `npm start`. The server reads the `PORT` it is given.
+Deploy to any Node host (Render, Railway, Fly.io…). Start command: `npm start`. The server reads the `PORT` it is given. Everyone opens the site's address.
 
-- Big screen: `https://your-app-url/host`
-- Players: `https://your-app-url/` and enter the room code
+Lobby and races live in memory, so restarting the server ends any race in progress.
 
-Rooms live in memory, so restarting the server ends any game in progress.
+## Files
+
+- `world.js`: the rules shared by phones and server (speed, pursuer, physics, the seeded track)
+- `game.js`: the phone: lobby, your runner, drawing
+- `server.js`: lobby, race control, position relay (WebSocket written by hand)

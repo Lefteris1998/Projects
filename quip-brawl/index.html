@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#050506" />
   <title>Quip Brawl</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%272%27 y=%272%27 width=%2712%27 height=%2712%27 fill=%27%23c4121f%27/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,20 +25,36 @@
     @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
   </style>
 </head>
-<body class="host">
-  <main>
-    <header>
-      <div class="brand">
-        <md-filled-tonal-icon-button class="back" id="back" href="../" aria-label="All projects" title="All projects" hidden><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
-        <h1 class="logo" id="logo"><span class="fallback">Quip Brawl</span></h1>
-      </div>
-      <div class="meta" id="meta"></div>
-    </header>
-    <section class="stage" id="stage"><h2>Opening a room…</h2></section>
+<body>
+  <canvas id="view"></canvas>
+
+  <div class="banner hidden" id="banner"><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
+  <div class="results hidden" id="results"></div>
+
+  <main class="panel" id="panel">
+    <div class="top">
+      <md-filled-tonal-icon-button class="back" id="back" href="../" aria-label="All projects" title="All projects" hidden><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
+      <h1 class="logo" id="logo"><span class="fallback">Quip Brawl</span></h1>
+    </div>
+
+    <form class="card" id="join" autocomplete="off">
+      <md-outlined-text-field id="name" label="Your name" maxlength="12"></md-outlined-text-field>
+      <md-filled-button type="submit"><md-icon slot="icon">login</md-icon>Join</md-filled-button>
+      <div class="error" id="join-err"></div>
+    </form>
+
+    <section class="card hidden" id="lobby">
+      <ul class="roster" id="roster"></ul>
+      <p class="status" id="status"></p>
+      <md-filled-button id="ready"><md-icon slot="icon">check</md-icon>Ready</md-filled-button>
+      <md-outlined-button class="hidden" id="unready"><md-icon slot="icon">close</md-icon>Not ready</md-outlined-button>
+      <md-text-button id="rename">Change name</md-text-button>
+    </section>
   </main>
+
   <canvas id="cursor" popover="manual" aria-hidden="true"></canvas>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-  <script src="host.js"></script>
+  <script src="world.js"></script>
+  <script src="game.js"></script>
   <script>
     // back arrow only when this is running inside the Projects hub
     if (location.pathname.includes('/quip-brawl/')) document.getElementById('back').hidden = false;
@@ -49,7 +66,7 @@
     if (window.pixelLogo) {
       const logo = document.getElementById('logo'), cv = document.createElement('canvas');
       cv.setAttribute('aria-hidden', 'true'); logo.append(cv); logo.classList.add('live');
-      pixelLogo(cv, { text: 'QUIP BRAWL', cell: 3, pad: 10, height: () => Math.max(30, Math.min(46, innerWidth * 0.032)) });
+      pixelLogo(cv, { text: 'QUIP BRAWL', cell: 3, pad: 10, maxWidth: () => Math.min(innerWidth - 120, 420), height: 44 });
     }
   </script>
 </body>

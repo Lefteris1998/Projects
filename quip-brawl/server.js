@@ -1,5 +1,7 @@
-// Quip Brawl game server. Rooms, phases and timers all live here; the screens just render what they're sent.
-// Phones talk to it over plain HTTP: POSTs for actions, Server-Sent Events for live updates (no npm packages).
+'use strict';
+// Quip Brawl server: one lobby for everyone, gravity-flip races between phones. Each phone runs its own runner on the
+// shared track (world.js) and reports where it is; the server keeps the lobby, starts races, relays positions and calls
+// the winner. Plain Node, no npm packages: the WebSocket handshake and framing are done by hand below.
 // The root Projects server (../serve.js) mounts it, or run it alone: node server.js
 
 const http = require('http');
@@ -7,15 +9,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const PROMPTS = require('./prompts.js');
+const World = require('./world.js');
 
 const ROOT = __dirname;
 const LAN_PORT = Number(process.env.PORT || process.env.GAME_PORT) || 8081;
 const SHARED = Object.fromEntries(['pixel-logo.js', 'cursor.js'].map(f => [`/haunt-filter/${f}`, path.join(__dirname, '..', 'haunt-filter', f)]));
-const ROUNDS = 3;
-const ANSWER_MS = 90000, VOTE_MS = 20000, REVEAL_MS = 8000, SCORES_MS = 9000;
-const MIN_PLAYERS = 3, MAX_PLAYERS = 8;
-const MAX_NAME = 12, MAX_ANSWER = 60;
+const MIN_PLAYERS = 2, MAX_PLAYERS = 8, MAX_NAME = 12;
+const WAIT_MS = 10000;       // once two are ready, the race starts this long after, ready or not
+const ALL_READY_MS = 3000;   // ...or this soon if everyone is ready
+const COUNTDOWN_MS = 3600, RESULTS_MS = 6000, GRACE_MS = 20000, STALE_MS = 4000;
 const COLORS = ['#ff5d8f', '#ffb627', '#3ddc97', '#4cc9f0', '#b388ff', '#ff7b3a', '#f72585', '#9ef01a'];
 
 const TYPES = {
@@ -23,235 +25,245 @@ const TYPES = {
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
 };
 
-const rooms = new Map();
+const players = new Map();   // id -> { id, token, name, color, wins, ready, conn, left }
+// phase: 'lobby' -> 'race' -> 'results' -> 'lobby'. race: { seed, startAt, runners: Map id -> runner state, alive }
+const game = { phase: 'lobby', launchAt: 0, race: null, timer: null };
 
 const token = () => crypto.randomBytes(12).toString('hex');
-const shuffle = arr => {
-  for (let i = arr.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; }
-  return arr;
-};
+const online = () => [...players.values()].filter(p => p.conn);
 
-function newCode() {
-  const A = 'BCDFGHJKLMNPQRSTVWXZ'; // consonants only, so codes never spell anything
-  let code;
-  do code = Array.from({ length: 4 }, () => A[crypto.randomInt(A.length)]).join('');
-  while (rooms.has(code));
-  return code;
-}
+// ===== Lobby =====
 
-function createRoom() {
-  const room = {
-    code: newCode(), hostToken: token(), players: [], phase: 'lobby', round: 0,
-    prompts: [], voteIdx: 0, deadline: 0, timer: null, clients: new Set(), used: new Set(), touched: Date.now(),
+function lobbyMsg() {
+  return {
+    t: 'lobby', phase: game.phase, launchAt: game.launchAt, min: MIN_PLAYERS, max: MAX_PLAYERS,
+    players: [...players.values()].map(p => ({ id: p.id, name: p.name, color: p.color, wins: p.wins, ready: p.ready, online: !!p.conn })),
   };
-  rooms.set(room.code, room);
-  return room;
 }
 
-// ===== Game flow =====
-
-function setTimer(room, ms, fn) {
-  clearTimeout(room.timer);
-  room.deadline = ms ? Date.now() + ms : 0;
-  room.timer = ms ? setTimeout(() => { fn(room); broadcast(room); }, ms) : null;
+function raceMsg() {
+  const r = game.race;
+  return { t: 'race', seed: r.seed, startAt: r.startAt, runners: [...r.runners.keys()], out: [...r.runners].filter(([, x]) => !x.alive).map(([id]) => id) };
 }
 
-function pickPrompts(room, n) {
-  let pool = PROMPTS.filter(t => !room.used.has(t));
-  if (pool.length < n) { room.used.clear(); pool = PROMPTS.slice(); }
-  const picked = shuffle(pool).slice(0, n);
-  picked.forEach(t => room.used.add(t));
-  return picked;
+// Starts counting down once two are ready; everyone being ready cuts the wait short
+function updateLaunch() {
+  if (game.phase !== 'lobby') return;
+  const here = online(), ready = here.filter(p => p.ready);
+  if (ready.length < MIN_PLAYERS) game.launchAt = 0;
+  else {
+    const soon = Date.now() + (ready.length === here.length ? ALL_READY_MS : WAIT_MS);
+    game.launchAt = game.launchAt ? Math.min(game.launchAt, soon) : soon;
+  }
+  clearTimeout(game.timer);
+  if (game.launchAt) game.timer = setTimeout(startRace, game.launchAt - Date.now());
 }
 
-// Every prompt goes to two players and every player gets two prompts: prompt k -> players k and k+1.
-function startRound(room) {
-  room.round++;
-  const order = shuffle(room.players.map(p => p.id));
-  const n = order.length;
-  room.prompts = pickPrompts(room, n).map((text, k) => ({
-    id: k, text, authors: [order[k], order[(k + 1) % n]], answers: {}, votes: {}, side: [0, 1], result: null,
-  }));
-  room.phase = 'answer';
-  setTimer(room, ANSWER_MS, endAnswers);
-}
-
-function endAnswers(room) {
-  for (const pr of room.prompts) for (const a of pr.authors) if (pr.answers[a] === undefined) pr.answers[a] = null;
-  room.prompts = shuffle(room.prompts.filter(pr => pr.authors.some(a => pr.answers[a])));
-  room.voteIdx = 0;
-  if (room.prompts.length) startVote(room); else showScores(room);
-}
-
-function startVote(room) {
-  const pr = room.prompts[room.voteIdx];
-  pr.side = shuffle([0, 1]);
-  room.phase = 'vote';
-  setTimer(room, VOTE_MS, reveal);
-}
-
-function voters(room, pr) { return room.players.filter(p => !pr.authors.includes(p.id)); }
-
-function reveal(room) {
-  const pr = room.prompts[room.voteIdx];
-  const total = Object.keys(pr.votes).length;
-  pr.result = pr.authors.map(a => {
-    const votes = Object.values(pr.votes).filter(v => v === a).length;
-    const sweep = total > 0 && votes === total && voters(room, pr).length > 1;
-    const points = (votes * 100 + (sweep ? 250 : 0)) * room.round;
-    const player = room.players.find(p => p.id === a);
-    if (player) player.score += points;
-    return { votes, points, sweep };
-  });
-  room.phase = 'reveal';
-  setTimer(room, REVEAL_MS, r => {
-    if (++r.voteIdx < r.prompts.length) startVote(r); else showScores(r);
-  });
-}
-
-function showScores(room) {
-  room.phase = 'scores';
-  setTimer(room, SCORES_MS, r => {
-    if (r.round < ROUNDS) startRound(r);
-    else { r.phase = 'final'; setTimer(r, 0); }
-  });
-}
-
-function backToLobby(room) {
-  room.players = room.players.filter(p => p.conns > 0);
-  room.players.forEach(p => { p.score = 0; });
-  room.round = 0;
-  room.prompts = [];
-  room.phase = 'lobby';
-  setTimer(room, 0);
-}
-
-function checkAllAnswered(room) {
-  if (room.prompts.every(pr => pr.authors.every(a => pr.answers[a] !== undefined))) endAnswers(room);
-}
-
-function checkAllVoted(room) {
-  const pr = room.prompts[room.voteIdx];
-  if (voters(room, pr).every(p => pr.votes[p.id] !== undefined)) reveal(room);
-}
-
-// ===== Views: what each screen is allowed to see =====
-
-function publicPlayers(room) {
-  return room.players.map((p, i) => ({
-    id: p.id, name: p.name, score: p.score, color: p.color, connected: p.conns > 0, vip: i === 0,
-  }));
-}
-
-function remaining(room) { return room.deadline ? Math.max(0, room.deadline - Date.now()) : 0; }
-
-function hostView(room) {
-  const v = {
-    role: 'host', code: room.code, phase: room.phase, round: room.round, rounds: ROUNDS,
-    remaining: remaining(room), players: publicPlayers(room), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
+function startRace() {
+  const runners = online().filter(p => p.ready).slice(0, MAX_PLAYERS);
+  game.launchAt = 0;
+  if (runners.length < MIN_PLAYERS) return broadcast(lobbyMsg());
+  game.phase = 'race';
+  game.race = {
+    seed: crypto.randomInt(2 ** 31), startAt: Date.now() + COUNTDOWN_MS, alive: runners.length,
+    runners: new Map(runners.map(p => [p.id, { x: World.START_X, y: World.START_Y, g: 1, rt: 0, st: 0, alive: true, place: 0, last: 0 }])),
   };
-  if (room.phase === 'answer') {
-    v.done = room.players.filter(p => room.prompts.every(pr => !pr.authors.includes(p.id) || pr.answers[p.id] !== undefined)).map(p => p.id);
-  }
-  if (room.phase === 'vote' || room.phase === 'reveal') {
-    const pr = room.prompts[room.voteIdx];
-    const shown = room.phase === 'reveal';
-    v.prompt = {
-      text: pr.text, index: room.voteIdx + 1, total: room.prompts.length,
-      options: pr.side.map(i => {
-        const author = pr.authors[i];
-        const o = { text: pr.answers[author] };
-        if (shown) {
-          Object.assign(o, pr.result[i], { author, voters: Object.keys(pr.votes).filter(k => pr.votes[k] === author) });
-        }
-        return o;
-      }),
-    };
-    v.voted = Object.keys(pr.votes);
-    v.authors = pr.authors;
-  }
-  return v;
+  broadcast(lobbyMsg());
+  broadcast(raceMsg());
 }
 
-function playerView(room, p) {
-  const idx = room.players.indexOf(p);
-  const v = {
-    role: 'player', code: room.code, phase: room.phase, round: room.round, rounds: ROUNDS, remaining: remaining(room),
-    me: { id: p.id, name: p.name, score: p.score, color: p.color, vip: idx === 0 },
-    playerCount: room.players.length, minPlayers: MIN_PLAYERS,
-  };
-  if (room.phase === 'answer') {
-    const todo = room.prompts.filter(pr => pr.authors.includes(p.id) && pr.answers[p.id] === undefined);
-    v.todo = todo.length ? { id: todo[0].id, text: todo[0].text, left: todo.length } : null;
-  }
-  if (room.phase === 'vote') {
-    const pr = room.prompts[room.voteIdx];
-    if (pr.authors.includes(p.id)) v.vote = { mine: true, key: pr.id };
-    else {
-      const mine = pr.votes[p.id];
-      v.vote = {
-        key: pr.id, text: pr.text,
-        options: pr.side.map(i => pr.answers[pr.authors[i]]),
-        voted: mine === undefined ? null : pr.side.findIndex(i => pr.authors[i] === mine),
-      };
-    }
-  }
-  if (room.phase === 'scores' || room.phase === 'final') {
-    const sorted = room.players.slice().sort((a, b) => b.score - a.score);
-    v.rank = sorted.findIndex(x => x.score === p.score) + 1;
-  }
-  return v;
+function knockOut(id) {
+  const race = game.race, r = race && race.runners.get(id);
+  if (game.phase !== 'race' || !r || !r.alive) return;
+  r.alive = false;
+  r.place = race.alive--;
+  broadcast({ t: 'out', id, place: r.place });
+  if (race.alive <= 1) endRace();
 }
 
-// ===== Transport =====
-
-function push(room, c) {
-  const view = c.host ? hostView(room) : playerView(room, c.player);
-  c.res.write(`data: ${JSON.stringify(view)}\n\n`);
+function endRace() {
+  const race = game.race;
+  const last = [...race.runners].find(([, r]) => r.alive);
+  if (last) last[1].place = 1;
+  const winner = last ? last[0] : [...race.runners].find(([, r]) => r.place === 1)?.[0];
+  if (players.has(winner)) players.get(winner).wins++;
+  game.phase = 'results';
+  const places = [...race.runners].sort((a, b) => a[1].place - b[1].place).map(([id]) => id);
+  broadcast({ t: 'end', winner, places });
+  broadcast(lobbyMsg());
+  clearTimeout(game.timer);
+  game.timer = setTimeout(() => {
+    game.phase = 'lobby';
+    game.race = null;
+    updateLaunch();
+    broadcast(lobbyMsg());
+  }, RESULTS_MS);
 }
 
-function broadcast(room) {
-  room.touched = Date.now();
-  for (const c of room.clients) {
-    if (c.player && !room.players.includes(c.player)) { c.res.write('event: gone\ndata: {}\n\n'); c.res.end(); room.clients.delete(c); continue; }
-    push(room, c);
-  }
-}
-
-function openStream(req, res, room, who) {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-  res.write('retry: 2000\n\n');
-  const c = { res, ...who };
-  room.clients.add(c);
-  if (c.player) c.player.conns++;
-  broadcast(room);
-  req.on('close', () => {
-    room.clients.delete(c);
-    if (c.player) c.player.conns--;
-    broadcast(room);
-  });
-}
-
-// Keep streams alive through proxies/sleepy phones, and forget rooms nobody has touched in a while.
+// Relay positions ~15 times a second, and knock out anyone whose phone went quiet or who is clearly behind the pursuer
 setInterval(() => {
-  for (const [code, room] of rooms) {
-    for (const c of room.clients) c.res.write(': ping\n\n');
-    if (!room.clients.size && Date.now() - room.touched > 3 * 3600e3) { clearTimeout(room.timer); rooms.delete(code); }
+  if (game.phase !== 'race') return;
+  const race = game.race, now = Date.now(), t = (now - race.startAt) / 1000;
+  if (t < 0) return;
+  for (const [id, r] of race.runners) {
+    if (!r.alive) continue;
+    if (now - Math.max(r.last, race.startAt) > STALE_MS || r.x < World.pursuerX(t - 2)) knockOut(id);
   }
-}, 15000).unref();
+  if (game.phase !== 'race') return;
+  const p = [];
+  for (const [id, r] of race.runners) if (r.alive) p.push([id, r.x, r.y, r.g, r.rt, r.st]);
+  broadcast({ t: 'snap', p });
+}, 66).unref();
 
-const json = (res, code, obj) => {
-  res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-  res.end(JSON.stringify(obj));
-};
+// Players who closed the page get a short grace period to come back (a refresh, a dropped connection) before they go
+setInterval(() => {
+  let gone = false;
+  for (const [id, p] of players) if (!p.conn && Date.now() - p.left > GRACE_MS) { players.delete(id); gone = true; }
+  if (gone) { updateLaunch(); broadcast(lobbyMsg()); }
+}, 5000).unref();
 
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', c => { data += c; if (data.length > 10000) { reject(new Error('too large')); req.destroy(); } });
-    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
-    req.on('error', reject);
+const cleanName = n => String(n || '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME);
+
+function onMessage(conn, m) {
+  if (m.t === 'ping') return send(conn, { t: 'pong', c: m.c, s: Date.now() });
+
+  if (m.t === 'hello') {
+    let p = [...players.values()].find(x => x.token === m.token && m.token);
+    const name = cleanName(m.name);
+    if (!p) {
+      if (!name) return send(conn, { t: 'error', msg: 'Pick a name first.' });
+      if (players.size >= MAX_PLAYERS) return send(conn, { t: 'error', msg: `Lobby is full (${MAX_PLAYERS} max). Try again in a bit.` });
+      if ([...players.values()].some(x => x.name.toLowerCase() === name.toLowerCase())) return send(conn, { t: 'error', msg: 'Someone already has that name.' });
+      const used = new Set([...players.values()].map(x => x.color));
+      p = { id: token(), token: token(), name, color: COLORS.find(c => !used.has(c)), wins: 0, ready: false, conn: null, left: 0 };
+      players.set(p.id, p);
+    }
+    if (p.conn && p.conn !== conn) p.conn.sock.destroy();
+    p.conn = conn;
+    conn.player = p;
+    send(conn, { t: 'welcome', id: p.id, token: p.token, name: p.name });
+    updateLaunch();
+    broadcast(lobbyMsg());
+    if (game.race) send(conn, raceMsg());
+    return;
+  }
+
+  const p = conn.player;
+  if (!p) return;
+  switch (m.t) {
+    case 'ready':
+      p.ready = !!m.on;
+      updateLaunch();
+      broadcast(lobbyMsg());
+      break;
+    case 'pos': {
+      const r = game.phase === 'race' && game.race.runners.get(p.id);
+      if (!r || !r.alive) break;
+      Object.assign(r, { x: +m.x || 0, y: +m.y || 0, g: m.g < 0 ? -1 : 1, rt: +m.rt || 0, st: m.st ? 1 : 0, last: Date.now() });
+      break;
+    }
+    case 'dead':
+      knockOut(p.id);
+      break;
+    case 'leave':
+      players.delete(p.id);
+      conn.player = null;
+      knockOut(p.id);
+      updateLaunch();
+      broadcast(lobbyMsg());
+      break;
+  }
+}
+
+function onClose(conn) {
+  const p = conn.player;
+  if (!p || p.conn !== conn) return;
+  p.conn = null;
+  p.left = Date.now();
+  p.ready = false;
+  knockOut(p.id);
+  updateLaunch();
+  broadcast(lobbyMsg());
+}
+
+// ===== WebSocket (RFC 6455, just the parts browsers use: text frames, ping, close) =====
+
+const conns = new Set();
+
+function frame(data, op = 1) {
+  const len = data.length;
+  let head;
+  if (len < 126) head = Buffer.from([0x80 | op, len]);
+  else if (len < 65536) { head = Buffer.alloc(4); head[0] = 0x80 | op; head[1] = 126; head.writeUInt16BE(len, 2); }
+  else { head = Buffer.alloc(10); head[0] = 0x80 | op; head[1] = 127; head.writeBigUInt64BE(BigInt(len), 2); }
+  return Buffer.concat([head, data]);
+}
+
+function send(conn, msg) {
+  if (!conn.sock.destroyed) conn.sock.write(frame(Buffer.from(JSON.stringify(msg))));
+}
+
+function broadcast(msg) {
+  const f = frame(Buffer.from(JSON.stringify(msg)));
+  for (const c of conns) if (c.player && !c.sock.destroyed) c.sock.write(f);
+}
+
+// Accepts WebSocket connections on any path ending in /ws (/ws on its own, /quip-brawl/ws inside the Projects hub)
+function handleUpgrade(req, sock) {
+  const key = req.headers['sec-websocket-key'];
+  if (!req.url.split('?')[0].endsWith('/ws') || String(req.headers.upgrade).toLowerCase() !== 'websocket' || !key) return sock.destroy();
+  const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
+  sock.setNoDelay(true);
+  const conn = { sock, player: null };
+  conns.add(conn);
+  let buf = Buffer.alloc(0);
+  sock.on('data', chunk => {
+    buf = Buffer.concat([buf, chunk]);
+    while (buf.length >= 2) {
+      const op = buf[0] & 15, masked = buf[1] & 0x80;
+      let len = buf[1] & 127, off = 2;
+      if (len === 126) { if (buf.length < 4) return; len = buf.readUInt16BE(2); off = 4; }
+      else if (len === 127) { if (buf.length < 10) return; len = Number(buf.readBigUInt64BE(2)); off = 10; }
+      if (len > 65536) return sock.destroy();
+      const start = off + (masked ? 4 : 0);
+      if (buf.length < start + len) return;
+      const data = Buffer.from(buf.subarray(start, start + len));
+      if (masked) for (let i = 0; i < len; i++) data[i] ^= buf[off + (i & 3)];
+      buf = buf.subarray(start + len);
+      if (op === 8) return sock.end(frame(Buffer.alloc(0), 8));
+      if (op === 9) sock.write(frame(data, 10));
+      else if (op === 1) {
+        let m;
+        try { m = JSON.parse(data.toString()); } catch { continue; }
+        if (m && typeof m === 'object') onMessage(conn, m);
+      }
+    }
   });
+  sock.on('close', () => { conns.delete(conn); onClose(conn); });
+  sock.on('error', () => {});
+}
+
+// ===== Static files =====
+
+function sendText(res, code, body) {
+  res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end(body);
+}
+
+// "/" is the game; the logo and cursor scripts are shared with the other projects and live in the Haunt Filter folder
+function handleRequest(req, res) {
+  try {
+    const p = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendText(res, 405, 'method not allowed');
+    const shared = SHARED[p];
+    const file = shared || path.normalize(path.join(ROOT, p === '/' ? 'index.html' : p));
+    if (!shared && !file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return sendText(res, 404, 'not found');
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    fs.createReadStream(file).pipe(res);
+  } catch (e) {
+    sendText(res, 500, String(e.message || e));
+  }
 }
 
 function lanUrls() {
@@ -264,145 +276,17 @@ function lanUrls() {
   return ips.map(ip => `http://${ip}:${LAN_PORT}/`);
 }
 
-function findPlayer(room, body) {
-  return room.players.find(p => p.id === body.id && p.secret === body.secret);
-}
-
-// Handles /api/* requests (p is relative to the game folder). Returns false if p isn't an API route.
-async function handleApi(req, res, url, p) {
-  if (p === '/api/info' && req.method === 'GET') return json(res, 200, { urls: lanUrls(), port: LAN_PORT });
-
-  if (p === '/api/events' && req.method === 'GET') {
-    const q = url.searchParams;
-    const room = rooms.get(String(q.get('code') || '').toUpperCase());
-    const host = room && q.get('host') === room.hostToken;
-    const player = room && !host && findPlayer(room, { id: q.get('id'), secret: q.get('secret') });
-    if (!host && !player) {
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-      return res.end('event: gone\ndata: {}\n\n');
-    }
-    return openStream(req, res, room, host ? { host: true } : { player });
-  }
-
-  if (req.method !== 'POST') return false;
-
-  if (p === '/api/create') {
-    const room = createRoom();
-    return json(res, 200, { code: room.code, hostToken: room.hostToken });
-  }
-
-  const body = await readJson(req);
-  const room = rooms.get(String(body.code || '').trim().toUpperCase());
-
-  if (p === '/api/join') {
-    if (!room) return json(res, 404, { error: "That room doesn't exist. Check the code on the big screen." });
-    const back = findPlayer(room, body);
-    if (back) return json(res, 200, { id: back.id, secret: back.secret, code: room.code });
-    const name = String(body.name || '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME);
-    if (!name) return json(res, 400, { error: 'Pick a name first.' });
-    if (room.phase !== 'lobby') return json(res, 409, { error: 'That game has already started. Wait for the next one!' });
-    if (room.players.length >= MAX_PLAYERS) return json(res, 409, { error: `Room is full (${MAX_PLAYERS} players max).` });
-    if (room.players.some(x => x.name.toLowerCase() === name.toLowerCase())) return json(res, 409, { error: 'Someone already has that name.' });
-    const used = new Set(room.players.map(x => x.color));
-    const player = { id: token(), secret: token(), name, score: 0, conns: 0, color: COLORS.find(c => !used.has(c)) };
-    room.players.push(player);
-    broadcast(room);
-    return json(res, 200, { id: player.id, secret: player.secret, code: room.code });
-  }
-
-  if (p === '/api/action') {
-    if (!room) return json(res, 404, { error: 'Room is gone.' });
-    const host = body.host && body.host === room.hostToken;
-    const player = !host && findPlayer(room, body);
-    if (!host && !player) return json(res, 403, { error: 'Not in this room.' });
-    const vip = host || room.players[0] === player;
-    const fail = msg => json(res, 400, { error: msg });
-
-    switch (body.type) {
-      case 'start': {
-        if (!vip || room.phase !== 'lobby') return fail('Only the VIP can start.');
-        room.players = room.players.filter(x => x.conns > 0);
-        if (room.players.length < MIN_PLAYERS) { broadcast(room); return fail(`Need at least ${MIN_PLAYERS} players.`); }
-        startRound(room);
-        break;
-      }
-      case 'answer': {
-        const pr = room.prompts.find(x => x.id === body.promptId);
-        const text = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_ANSWER);
-        if (room.phase !== 'answer' || !player || !pr || !pr.authors.includes(player.id) || pr.answers[player.id] !== undefined) return fail('Too late for that one.');
-        if (!text) return fail('Write something!');
-        pr.answers[player.id] = text;
-        checkAllAnswered(room);
-        break;
-      }
-      case 'vote': {
-        const pr = room.prompts[room.voteIdx];
-        if (room.phase !== 'vote' || !player || pr.authors.includes(player.id) || pr.votes[player.id] !== undefined) return fail("Can't vote right now.");
-        if (body.side !== 0 && body.side !== 1) return fail('Bad vote.');
-        pr.votes[player.id] = pr.authors[pr.side[body.side]];
-        checkAllVoted(room);
-        break;
-      }
-      case 'again': {
-        if (!vip || room.phase !== 'final') return fail('Only the VIP can restart.');
-        backToLobby(room);
-        break;
-      }
-      case 'kick': {
-        const target = room.players.find(x => x.id === body.target);
-        if (!host || room.phase !== 'lobby' || !target) return fail("Can't remove that player.");
-        room.players = room.players.filter(x => x !== target);
-        break;
-      }
-      default: return fail('Unknown action.');
-    }
-    broadcast(room);
-    return json(res, 200, { ok: true });
-  }
-
-  return false;
-}
-
-function send(res, code, body) {
-  res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end(body);
-}
-
-// Request handler for the phone-facing port: "/" is the join page, "/host" the big screen.
-async function handleRequest(req, res) {
-  try {
-    const url = new URL(req.url, 'http://localhost');
-    const p = decodeURIComponent(url.pathname);
-    if (p.startsWith('/api/')) {
-      if (await handleApi(req, res, url, p) === false) send(res, 404, 'not found');
-      return;
-    }
-    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
-    const rel = p === '/' ? 'join.html' : p === '/host' ? 'index.html' : p;
-    // the logo and cursor scripts are shared with the other projects and live in the Haunt Filter folder
-    const shared = SHARED[p];
-    const file = shared || path.normalize(path.join(ROOT, rel));
-    if (!shared && !file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, 'not found');
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    fs.createReadStream(file).pipe(res);
-  } catch (e) {
-    send(res, 500, String(e.message || e));
-  }
-}
-
-// Listens on all network interfaces so phones on the same Wi-Fi can reach it.
+// Listens on all network interfaces so phones on the same Wi-Fi can reach it
 function listenLan(cb) {
   const server = http.createServer(handleRequest);
+  server.on('upgrade', handleUpgrade);
   server.on('error', e => console.error(`Quip Brawl: couldn't open port ${LAN_PORT} for phones (${e.code}).`));
   server.listen(LAN_PORT, '0.0.0.0', () => cb && cb(lanUrls()));
   return server;
 }
 
-module.exports = { handleApi, listenLan, LAN_PORT };
+module.exports = { handleUpgrade, listenLan, LAN_PORT };
 
 if (require.main === module) {
-  listenLan(urls => {
-    console.log(`Quip Brawl host screen: http://localhost:${LAN_PORT}/host`);
-    console.log(`Phones join at: ${urls[0] || `http://localhost:${LAN_PORT}/`}`);
-  });
+  listenLan(urls => console.log(`Quip Brawl: open ${urls[0] || `http://localhost:${LAN_PORT}/`} on every phone`));
 }
