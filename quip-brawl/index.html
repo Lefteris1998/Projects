@@ -33,7 +33,7 @@
 
   <main class="panel" id="panel">
     <div class="top">
-      <md-filled-tonal-icon-button class="back" id="back" href="../" aria-label="All projects" title="All projects" hidden><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
+      <md-filled-tonal-icon-button class="back" id="back" href="https://lefteris1998.github.io/Projects/" aria-label="All projects" title="All projects"><md-icon>arrow_back</md-icon></md-filled-tonal-icon-button>
       <h1 class="logo" id="logo"><span class="fallback">Quip Brawl</span></h1>
     </div>
 
@@ -55,10 +55,6 @@
   <canvas id="cursor" popover="manual" aria-hidden="true"></canvas>
   <script src="world.js"></script>
   <script src="game.js"></script>
-  <script>
-    // back arrow only when this is running inside the Projects hub
-    if (location.pathname.includes('/quip-brawl/')) document.getElementById('back').hidden = false;
-  </script>
   <!-- shared with the Projects page and Haunt Filter; the page still works (plain logo, normal cursor) without them -->
   <script src="../haunt-filter/pixel-logo.js"></script>
   <script src="../haunt-filter/cursor.js"></script>
