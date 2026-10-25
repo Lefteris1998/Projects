@@ -136,15 +136,11 @@
     .s-angle .shadow { position: absolute; left: 50%; top: 84%; width: 110px; height: 14px; margin-left: -55px; border-radius: 50%; background: radial-gradient(rgba(0,0,0,0.7), transparent 70%); animation: squish 5s ease-in-out infinite alternate; }
     @keyframes orbit { from { transform: rotateX(16deg) rotateY(-42deg); } to { transform: rotateX(10deg) rotateY(42deg); } }
     @keyframes squish { 50% { transform: scaleX(0.75); } }
-    /* Quip Brawl: two speech bubbles headbutt each other, stars fly */
-    .s-quip .left { animation: lunge-l 2.6s cubic-bezier(0.5, 0, 0.3, 1.4) infinite; }
-    .s-quip .right { animation: lunge-r 2.6s cubic-bezier(0.5, 0, 0.3, 1.4) infinite; }
-    .s-quip .stars { opacity: 0; transform-origin: 50% 50%; animation: stars 2.6s ease-out infinite; }
-    .s-quip .plus { opacity: 0; animation: vote 2.6s ease-out infinite; }
-    @keyframes lunge-l { 0%, 30%, 100% { transform: none; } 46% { transform: translateX(19px) scaleX(0.9); } 54% { transform: translateX(-4px) rotate(-6deg); } 70% { transform: none; } }
-    @keyframes lunge-r { 0%, 30%, 100% { transform: none; } 46% { transform: translateX(-19px) scaleX(0.9); } 54% { transform: translateX(4px) rotate(6deg); } 70% { transform: none; } }
-    @keyframes stars { 0%, 44% { opacity: 0; transform: scale(0.2) rotate(0); } 48% { opacity: 1; transform: scale(1.1) rotate(20deg); } 70% { opacity: 0; transform: scale(1.4) rotate(60deg); } 100% { opacity: 0; } }
-    @keyframes vote { 0%, 55% { opacity: 0; transform: translateY(6px); } 62% { opacity: 1; } 90%, 100% { opacity: 0; transform: translateY(-20px); } }
+    /* Quip Brawl: a pixel runner flips gravity between floor and ceiling while the glyph wall creeps after it */
+    .s-quip .runner { transform-box: fill-box; transform-origin: center; animation: gflip 2.8s cubic-bezier(0.5, 0, 0.4, 1) infinite; }
+    .s-quip .wall { animation: creep 2.8s ease-in-out infinite; }
+    @keyframes gflip { 0%, 30% { transform: none; } 45%, 80% { transform: translateY(-38px) scaleY(-1); } 95%, 100% { transform: none; } }
+    @keyframes creep { 0%, 100% { transform: none; } 50% { transform: translateX(10px); } }
     /* Fruit Butcher: the knife slashes, the apple splits and turns out to have a heart */
     .s-fruit .knife { opacity: 0; animation: slash 3.2s cubic-bezier(0.7, 0, 0.3, 1) infinite; }
     .s-fruit .lhalf { transform-origin: 100% 100%; animation: split-l 3.2s ease-out infinite; }
@@ -309,25 +305,29 @@
         </div>
         <h2><md-icon aria-hidden="true">record_voice_over</md-icon>Blindfold Trainer</h2>
       </a>
-      <a class="card" href="quip-brawl/" data-tab="games">
+      <a class="card" href="https://projects-vetz.onrender.com/" data-tab="games">
         <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
         <div class="art" aria-hidden="true">
           <svg class="s-quip" viewBox="0 0 320 132" preserveAspectRatio="xMidYMax meet">
-            <g class="left">
-              <rect x="72" y="40" width="80" height="44" rx="14" fill="#c4121f"/><path d="M92 82 l-8 16 l20 -14 z" fill="#c4121f"/>
-              <text x="112" y="70" text-anchor="middle" font-family="Creepster, Impact" font-size="26" fill="#f3e9e4">LOL</text>
-              <text class="plus" x="80" y="34" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="14" fill="#ff7a2e">+1</text>
+            <!-- ceiling and floor bars, the running faces glowing orange -->
+            <g fill="#c4121f"><rect x="132" y="18" width="10" height="10"/><rect x="144" y="18" width="10" height="10"/><rect x="156" y="18" width="10" height="10"/><rect x="168" y="18" width="10" height="10"/><rect x="180" y="18" width="10" height="10"/><rect x="192" y="18" width="10" height="10"/><rect x="204" y="18" width="10" height="10"/><rect x="216" y="18" width="10" height="10"/><rect x="228" y="18" width="10" height="10"/><rect x="240" y="18" width="10" height="10"/><rect x="252" y="18" width="10" height="10"/><rect x="264" y="18" width="10" height="10"/></g>
+            <rect x="132" y="28" width="142" height="2" fill="#ff7a2e"/>
+            <g fill="#c4121f"><rect x="60" y="106" width="10" height="10"/><rect x="72" y="106" width="10" height="10"/><rect x="84" y="106" width="10" height="10"/><rect x="96" y="106" width="10" height="10"/><rect x="108" y="106" width="10" height="10"/><rect x="120" y="106" width="10" height="10"/><rect x="132" y="106" width="10" height="10"/><rect x="144" y="106" width="10" height="10"/><rect x="156" y="106" width="10" height="10"/><rect x="168" y="106" width="10" height="10"/><rect x="180" y="106" width="10" height="10"/></g>
+            <rect x="60" y="104" width="130" height="2" fill="#ff7a2e"/>
+            <!-- the pursuer: a wall of blood-red squares with ember eyes -->
+            <g class="wall">
+              <g fill="#6d0207"><rect x="0" y="0" width="34" height="132"/></g>
+              <g fill="#c4121f"><rect x="34" y="8" width="8" height="8"/><rect x="34" y="30" width="8" height="8"/><rect x="42" y="40" width="6" height="6"/><rect x="34" y="62" width="8" height="8"/><rect x="34" y="88" width="8" height="8"/><rect x="42" y="98" width="6" height="6"/><rect x="34" y="118" width="8" height="8"/></g>
+              <g fill="#ff7a2e"><rect x="18" y="56" width="5" height="5"/><rect x="27" y="56" width="5" height="5"/></g>
             </g>
-            <g class="right">
-              <rect x="168" y="40" width="80" height="44" rx="14" fill="#f3e9e4"/><path d="M228 82 l8 16 l-20 -14 z" fill="#f3e9e4"/>
-              <text x="208" y="70" text-anchor="middle" font-family="Creepster, Impact" font-size="26" fill="#6d0207">BOO</text>
-            </g>
-            <g class="stars" fill="#ff7a2e">
-              <path d="M160 34 l3 7 7 1 -5 5 1 7 -6 -4 -6 4 1 -7 -5 -5 7 -1z"/><path d="M148 96 l2 4 4 .5 -3 3 .8 4 -3.8 -2 -3.8 2 .8 -4 -3 -3 4 -.5z"/><path d="M174 100 l2 4 4 .5 -3 3 .8 4 -3.8 -2 -3.8 2 .8 -4 -3 -3 4 -.5z"/>
+            <!-- the runner, 8x12 pixels -->
+            <g class="runner" fill="#ff5d8f">
+              <rect x="154" y="68" width="12" height="12"/><rect x="157" y="77" width="6" height="3"/><rect x="151" y="83" width="18" height="6"/><rect x="154" y="89" width="12" height="6"/><rect x="157" y="95" width="6" height="6"/><rect x="157" y="101" width="9" height="3"/>
+              <rect x="157" y="74" width="3" height="3" fill="#050506"/><rect x="163" y="74" width="3" height="3" fill="#050506"/>
             </g>
           </svg>
         </div>
-        <h2><md-icon aria-hidden="true">sports_kabaddi</md-icon>Quip Brawl</h2>
+        <h2><md-icon aria-hidden="true">swap_vert</md-icon>Quip Brawl</h2>
       </a>
       <a class="card" href="statue-poop-defender/" data-tab="games">
         <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
