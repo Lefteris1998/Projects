@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trap Trainer</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+  <style>
+    /* Lichess dark theme colours (the user found the hub's red too harsh for this one) */
+    :root {
+      --ink: #161512;
+      --card: #262421;
+      --card-hi: #302e2b;
+      --line: #3d3a37;
+      --text: #d9d9d9;
+      --dim: #999;
+      --blood: #3692e7;
+      --blood-text: #e0605a;
+      --ok: #629924;
+      --light: #f0d9b5;
+      --dark: #b58863;
+      --sq: min(calc((100vw - 54px) / 8), calc((100vh - 140px) / 8), 76px);
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 'Noto Sans', 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #2e2a24, var(--ink) 116px) no-repeat, var(--ink); }
+    header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 6px; max-width: 1100px; margin: 0 auto; }
+    header a { color: var(--dim); text-decoration: none; font-size: 22px; line-height: 1; }
+    h1 { margin: 0; font: 500 24px/1 'Noto Sans', sans-serif; color: var(--text); }
+    #stats { margin-left: auto; font: 500 13px 'JetBrains Mono', monospace; color: var(--dim); }
+    main { display: flex; gap: 20px; padding: 10px 16px 24px; max-width: 1100px; margin: 0 auto; align-items: flex-start; }
+    @media (max-width: 860px) { main { flex-direction: column; align-items: center; } aside { width: 100%; } }
+
+    /* Board */
+    .play { display: flex; flex-direction: column; gap: 10px; }
+    #board { display: grid; grid-template-columns: repeat(8, var(--sq)); grid-template-rows: repeat(8, var(--sq));
+      border-radius: 4px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,0,0,.7); touch-action: none; user-select: none; }
+    .sq { position: relative; }
+    .sq.light { background: var(--light); }
+    .sq.dark { background: var(--dark); }
+    .sq.last.light { background: #cdd26a; }
+    .sq.last.dark { background: #aaa23a; }
+    .sq.sel { box-shadow: inset 0 0 0 100px rgba(20, 85, 30, .5); }
+    .sq.miss { box-shadow: inset 0 0 0 100px rgba(200, 60, 50, .45); }
+    .sq.hint { box-shadow: inset 0 0 0 4px #15781b, inset 0 0 0 100px rgba(20, 120, 27, .3); }
+    .sq.pre { box-shadow: inset 0 0 0 100px rgba(20, 30, 85, .5); }
+    .sq.pdot::after { content: ''; position: absolute; inset: 37%; border-radius: 50%; background: rgba(20, 30, 85, .5); }
+    #wrap { position: relative; }
+    #shapes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+    .sq.check { background: radial-gradient(circle, #ff0000 0%, #e70000aa 25%, transparent 75%), var(--dark); }
+    .sq.dot::after { content: ''; position: absolute; inset: 37%; border-radius: 50%; background: rgba(20, 85, 30, .5); }
+    .sq.cap::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 calc(var(--sq) * .08) rgba(20, 85, 30, .5); }
+    .pc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    .pc.lifted { opacity: .25; }
+    #ghost { position: fixed; width: var(--sq); height: var(--sq); pointer-events: none; z-index: 10; display: none; transform: translate(-50%, -50%) scale(1.1); }
+    .coord { position: absolute; font: 600 11px "Noto Sans", sans-serif; z-index: 2; pointer-events: none; }
+    .coord.r { top: 2px; left: 3px; }
+    .coord.f { bottom: 1px; right: 4px; }
+    .sq.light .coord { color: var(--dark); }
+    .sq.dark .coord { color: var(--light); }
+    #board.mine .sq { cursor: pointer; }
+    @keyframes nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    #board.nudge { animation: nudge .25s ease; }
+
+    .bar { display: flex; align-items: center; gap: 8px; }
+    #status { flex: 1; font-weight: 500; color: var(--dim); min-height: 1.4em; }
+    #status.bad { color: var(--blood-text); }
+    #status.ok { color: var(--ok); }
+
+    button, select, input, textarea { font: inherit; color: var(--text); }
+    button { background: var(--card-hi); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; transition: background .2s, border-color .2s; }
+    button:hover { border-color: #806460; }
+    button.primary { background: var(--blood); border-color: var(--blood); color: #fff; }
+    button.primary:hover { background: #4ba1f0; }
+
+    /* Side panel */
+    aside { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+    .card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; }
+    .seg button[aria-pressed="true"] { background: var(--blood); color: #fff; }
+    #list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+    .op { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; }
+    .op:hover { background: var(--card-hi); }
+    .op label { flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .op input { accent-color: var(--blood); width: 16px; height: 16px; }
+    .op small { color: var(--dim); font: 500 12px 'JetBrains Mono', monospace; }
+    .op .warn { color: var(--blood-text); }
+    .op button { padding: 2px 8px; border: 0; background: transparent; color: var(--dim); }
+    .op button:hover { color: var(--blood-text); }
+    #moves { font: 500 13px/1.8 'JetBrains Mono', monospace; color: var(--dim); min-height: 1.8em; }
+    #moves b { color: var(--text); font-weight: 500; padding: 1px 3px; border-radius: 4px; }
+    .analysis #moves b { cursor: pointer; }
+    .analysis #moves b:hover { background: var(--card-hi); }
+    #moves b.cur { background: #3692e755; }
+
+    /* Analysis: lichess-style eval bar, engine line and move navigation */
+    .boardrow { display: flex; gap: 6px; }
+    #evalbar { width: 14px; position: relative; overflow: hidden; border-radius: 3px; background: #403d39; display: none; }
+    #evalFill { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #fff; transition: height .4s ease; }
+    #evalbar.flip #evalFill { bottom: auto; top: 0; }
+    .analysis #evalbar { display: block; }
+    #engine { display: none; }
+    .analysis #engine { display: block; }
+    #evalText { font: 500 13px/1.5 'JetBrains Mono', monospace; color: var(--dim); }
+    #evalText b { font-size: 20px; color: var(--text); margin-right: 8px; }
+    #evalText .pv { margin-top: 4px; color: var(--text); }
+    .an-only { display: none; }
+    .analysis .an-only { display: inline-flex; }
+    .analysis .train-only { display: none; }
+    .bar a.an-only { color: var(--dim); text-decoration: none; padding: 8px 6px; }
+    .bar a.an-only:hover { color: var(--text); }
+    .imp { display: flex; flex-direction: column; gap: 8px; }
+    .imp .row { display: flex; gap: 8px; }
+    .imp input, .imp select, .imp textarea { background: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+    .imp input { flex: 1; min-width: 0; }
+    .imp textarea { min-height: 70px; resize: vertical; font: 12px/1.4 'JetBrains Mono', monospace; }
+    #impMsg { font-size: 13px; color: var(--dim); min-height: 1.2em; }
+    #impMsg.bad { color: var(--blood-text); }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../" title="Projects">‹</a>
+    <h1>Trap Trainer</h1>
+    <span id="stats"></span>
+  </header>
+  <main>
+    <section class="play">
+      <div class="boardrow">
+        <div id="evalbar"><div id="evalFill"></div></div>
+        <div id="wrap"><div id="board"></div><svg id="shapes" viewBox="0 0 8 8"></svg></div>
+      </div>
+      <div class="bar">
+        <span id="status"></span>
+        <button id="hint" class="train-only">Hint</button>
+        <button class="an-only" data-nav="first" title="Start">⏮</button>
+        <button class="an-only" data-nav="prev" title="Back">◀</button>
+        <button class="an-only" data-nav="next" title="Forward">▶</button>
+        <button class="an-only" data-nav="last" title="End">⏭</button>
+        <a class="an-only" id="lichess" target="_blank" rel="noopener" title="Open on lichess">lichess ↗</a>
+        <button id="next" class="primary">Next line</button>
+      </div>
+    </section>
+    <aside>
+      <div class="card">
+        <div class="seg" id="side">
+          <button data-side="w">Play white</button>
+          <button data-side="b">Play black</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Openings</h2>
+        <div id="list"></div>
+      </div>
+      <div class="card" id="engine">
+        <h2>Stockfish</h2>
+        <div id="evalText"></div>
+      </div>
+      <div class="card">
+        <h2>Moves</h2>
+        <div id="moves"></div>
+      </div>
+      <div class="card imp">
+        <h2>Add</h2>
+        <textarea id="impText" placeholder="lichess study link or PGN"></textarea>
+        <div class="row">
+          <input id="impName" placeholder="Name (optional)">
+          <select id="impColor">
+            <option value="">Side: auto</option>
+            <option value="white">White</option>
+            <option value="black">Black</option>
+          </select>
+          <button id="impBtn" class="primary">Add</button>
+        </div>
+        <div id="impMsg"></div>
+      </div>
+    </aside>
+  </main>
+  <img id="ghost" alt="">
+
+  <script src="chess.js"></script>
+  <script src="book.js"></script>
+  <script src="openings.js"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    const boardEl = $('#board'), ghost = $('#ghost');
+    const STORE = 'trap-trainer.v1';
+    const pieceSrc = p => `pieces/cburnett/${p.color}${p.type.toUpperCase()}.svg`;
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+
+    const state = Object.assign({ imported: [], off: [], side: 'w' }, read());
+    function read() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } }
+    function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
+
+    let openings = [], book;
+    const game = new Chess();
+    let selected = null, last = null, marks = {}, busy = false, done = false, token = 0, posMisses = 0, drag = null;
+    let premove = null, shapes = [], drawing = null;
+    let an = null, lineStart = null;  // an: analysis board { start, moves, ply }
+    const stats = { lines: 0, misses: 0 };
+
+    function loadOpenings() {
+      const src = [
+        ...(window.OPENINGS || []).map(o => ({ ...o, id: 'file:' + o.name, file: true })),
+        ...state.imported,
+      ];
+      openings = src.map(o => ({ ...o, ...Book.parsePGN(o.pgn, o.color) }));
+    }
+
+    function bookMoves() { return [...(book.moves[Book.key(game.fen())] || [])]; }
+
+    // ---- Practice loop ----
+    function newLine() {
+      token++;
+      const active = openings.filter(o => !state.off.includes(o.id)).flatMap(o => o.chapters);
+      book = Book.buildBook(active)[state.side];
+      selected = null; last = null; marks = {}; posMisses = 0; done = false; busy = false; premove = null; shapes = [];
+      closeAnalysis();
+      const starts = [...book.starts];
+      if (!starts.length) {
+        game.reset(); render();
+        return setStatus(openings.length ? `No ${state.side === 'w' ? 'white' : 'black'} lines selected` : 'Add an opening');
+      }
+      game.load(lineStart = pick(starts));
+      step();
+    }
+
+    function step() {
+      render();
+      const opts = bookMoves();
+      if (!opts.length) return finish();
+      if (game.turn() === state.side) {
+        busy = false; setStatus('Your move');
+        if (premove) { const pm = premove; premove = null; attempt(pm.from, pm.to); }
+        return;
+      }
+      busy = true; setStatus('');
+      const t = token;
+      setTimeout(() => {
+        if (t !== token) return;
+        const m = game.move(pick(opts));
+        last = m; marks = {}; posMisses = 0;
+        step();
+      }, 450);
+    }
+
+    function finish() {
+      busy = false; done = true; stats.lines++;
+      setStatus('Line complete', 'ok');
+      openAnalysis();
+    }
+
+    // ---- Analysis board: free play for both sides from the finished line ----
+    function openAnalysis() {
+      token++;
+      const moves = game.history();
+      an = { start: lineStart, moves, ply: moves.length };
+      premove = null; selected = null; marks = {};
+      document.body.classList.add('analysis');
+      render(); analyse();
+    }
+    function closeAnalysis() {
+      if (!an) return;
+      an = null;
+      document.body.classList.remove('analysis');
+      engine.want = null;
+      if (engine.searching) engine.w.postMessage('stop');
+    }
+    function gotoPly(n) {
+      an.ply = Math.max(0, Math.min(an.moves.length, n));
+      game.load(an.start);
+      last = null;
+      for (const san of an.moves.slice(0, an.ply)) last = game.move(san);
+      selected = null; marks = {};
+      render(); analyse();
+    }
+    function anMove(from, to) {
+      const m = game.move({ from, to, promotion: 'q' });
+      selected = null;
+      if (!m) return render();
+      // Same move as the line just steps forward; anything else replaces what came after
+      if (an.moves[an.ply] !== m.san) an.moves = an.moves.slice(0, an.ply).concat(m.san);
+      an.ply++; last = m;
+      render(); analyse();
+    }
+    function lichessUrl() {
+      if (an.start.split(' ')[0] !== 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR') return 'https://lichess.org/analysis/' + game.fen().replace(/ /g, '_');
+      const pgn = an.moves.map((s, i) => (i % 2 ? '' : `${i / 2 + 1}. `) + s).join(' ');
+      return 'https://lichess.org/analysis/pgn/' + encodeURIComponent(pgn) + '#' + an.ply;
+    }
+
+    // ---- Stockfish (a Web Worker, so it only runs over http via start.bat, not file://) ----
+    const engine = { w: null, ok: null, ready: false, searching: false, cur: null, want: null, info: null };
+    function engineStart() {
+      if (engine.ok !== null) return engine.ok;
+      try {
+        if (typeof WebAssembly !== 'object' || location.protocol === 'file:') throw 0;
+        engine.w = new Worker('stockfish.js');
+      } catch { return engine.ok = false; }
+      engine.w.onerror = () => { engine.ok = false; showEval(); };
+      engine.w.onmessage = e => onEngine(String(e.data));
+      engine.w.postMessage('uci');
+      engine.w.postMessage('isready');
+      return engine.ok = true;
+    }
+    function analyse() {
+      if (!an) return;
+      engine.info = null;
+      engine.want = game.game_over() ? null : game.fen();
+      showEval(); renderShapes();
+      if (engine.want && engineStart()) kick();
+    }
+    // One search at a time: a new position stops the old search, and starts once its bestmove arrives
+    function kick() {
+      if (!engine.ready) return;
+      if (engine.searching) { engine.w.postMessage('stop'); return; }
+      if (!engine.want) return;
+      engine.cur = engine.want; engine.want = null; engine.searching = true;
+      engine.w.postMessage('position fen ' + engine.cur);
+      engine.w.postMessage('go depth 22');
+    }
+    function onEngine(line) {
+      if (line === 'readyok') { engine.ready = true; return kick(); }
+      if (line.startsWith('bestmove')) { engine.searching = false; return kick(); }
+      if (!line.startsWith('info') || !line.includes(' pv ') || engine.want || !an || engine.cur !== game.fen()) return;
+      const t = line.split(' '), at = k => t[t.indexOf(k) + 1];
+      if (t.includes('multipv') && at('multipv') !== '1') return;
+      engine.info = {
+        depth: +at('depth'),
+        cp: at('score') === 'cp' ? +t[t.indexOf('score') + 2] : null,
+        mate: at('score') === 'mate' ? +t[t.indexOf('score') + 2] : null,
+        pv: t.slice(t.indexOf('pv') + 1),
+      };
+      showEval(); renderShapes();
+    }
+    function showEval() {
+      if (!an) return;
+      const box = $('#evalText'), fill = $('#evalFill');
+      $('#evalbar').classList.toggle('flip', state.side === 'b');
+      $('#lichess').href = lichessUrl();
+      if (game.in_checkmate()) { box.innerHTML = '<b>#</b>Checkmate'; fill.style.height = game.turn() === 'w' ? '0%' : '100%'; return; }
+      if (game.game_over()) { box.innerHTML = '<b>½</b>Draw'; fill.style.height = '50%'; return; }
+      if (engine.ok === false) { box.textContent = 'Open with start.bat to use the engine'; return; }
+      const i = engine.info;
+      if (!i) { box.textContent = 'Thinking…'; return; }
+      // Scores come from the side to move; show them from white's view like lichess
+      const sign = game.turn() === 'w' ? 1 : -1;
+      let txt, pct;
+      if (i.mate !== null) { const m = i.mate * sign; txt = (m > 0 ? '#' : '#-') + Math.abs(m); pct = m > 0 ? 100 : 0; }
+      else { const cp = i.cp * sign; txt = (cp > 0 ? '+' : '') + (cp / 100).toFixed(1); pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1); }
+      const c = new Chess(game.fen()), sans = [];
+      for (const u of i.pv.slice(0, 10)) {
+        const m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+        if (!m) break;
+        sans.push(m.san);
+      }
+      box.innerHTML = `<b>${txt}</b>depth ${i.depth}<div class="pv"></div>`;
+      box.querySelector('.pv').textContent = sans.join(' ');
+      fill.style.height = pct + '%';
+    }
+
+    function attempt(from, to) {
+      if (busy || done || game.turn() !== state.side) return;
+      const legal = game.moves({ verbose: true }).filter(m => m.from === from && m.to === to);
+      selected = null;
+      if (!legal.length) return render();
+      const opts = bookMoves();
+      const hit = legal.find(m => opts.includes(m.san));
+      if (hit) {
+        last = game.move(hit.san); marks = {}; posMisses = 0;
+        return step();
+      }
+      stats.misses++; posMisses++;
+      marks = { [to]: 'miss' };
+      setStatus('Not the line', 'bad');
+      boardEl.classList.remove('nudge'); void boardEl.offsetWidth; boardEl.classList.add('nudge');
+      if (posMisses >= 2) return hint();
+      render();
+    }
+
+    function hint() {
+      if (busy || done || game.turn() !== state.side) return;
+      const opts = bookMoves();
+      marks = {};
+      for (const m of game.moves({ verbose: true })) if (opts.includes(m.san)) marks[m.from] = marks[m.to] = 'hint';
+      render();
+    }
+
+    function setStatus(text, cls = '') { const s = $('#status'); s.textContent = text; s.className = cls; }
+
+    // ---- Rendering ----
+    function render() {
+      const flip = state.side === 'b';
+      const pre = preTurn();
+      const targets = !selected ? [] : pre ? premoveDests(selected) : game.moves({ square: selected, verbose: true }).map(m => m.to);
+      const inCheck = game.in_check();
+      boardEl.classList.toggle('mine', myTurn());
+      boardEl.innerHTML = '';
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+        const f = flip ? 7 - c : c, rank = flip ? r + 1 : 8 - r;
+        const sq = 'abcdefgh'[f] + rank;
+        const el = document.createElement('div');
+        el.className = 'sq ' + ((f + rank) % 2 ? 'light' : 'dark');
+        el.dataset.sq = sq;
+        if (last && (sq === last.from || sq === last.to)) el.classList.add('last');
+        if (sq === selected) el.classList.add(pre ? 'pre' : 'sel');
+        if (premove && (sq === premove.from || sq === premove.to)) el.classList.add('pre');
+        if (marks[sq]) el.classList.add(marks[sq]);
+        const p = game.get(sq);
+        if (p) {
+          const img = document.createElement('img');
+          img.className = 'pc'; img.src = pieceSrc(p); img.alt = ''; img.draggable = false;
+          if (drag && drag.moved && drag.from === sq) img.classList.add('lifted');
+          el.appendChild(img);
+          if (p.type === 'k' && p.color === game.turn() && inCheck) el.classList.add('check');
+        }
+        if (targets.includes(sq)) el.classList.add(pre ? 'pdot' : p ? 'cap' : 'dot');
+        if (c === 0) el.insertAdjacentHTML('beforeend', `<span class="coord r">${rank}</span>`);
+        if (r === 7) el.insertAdjacentHTML('beforeend', `<span class="coord f">${'abcdefgh'[f]}</span>`);
+        boardEl.appendChild(el);
+      }
+      renderMoves();
+      renderShapes();
+      $('#stats').textContent = `${stats.lines} done · ${stats.misses} missed`;
+      $('#next').classList.toggle('primary', done);
+    }
+
+    function renderMoves() {
+      const hist = an ? an.moves : game.history();
+      const mv = j => `<b data-ply="${j + 1}"${an && an.ply === j + 1 ? ' class="cur"' : ''}>${hist[j]}</b> `;
+      let html = '', n = 1, i = 0;
+      if (startTurn === 'b' && hist.length) { html += `1… ${mv(0)}`; i = 1; n = 2; }
+      for (; i < hist.length; i += 2, n++) html += `${n}. ${mv(i)}${hist[i + 1] ? mv(i + 1) : ''}`;
+      $('#moves').innerHTML = html || '—';
+    }
+    let startTurn = 'w';
+
+    function renderList() {
+      const list = $('#list');
+      list.innerHTML = '';
+      for (const o of openings) {
+        const w = o.chapters.filter(c => c.side !== 'b').length, b = o.chapters.filter(c => c.side !== 'w').length;
+        const row = document.createElement('div');
+        row.className = 'op';
+        row.innerHTML = `<label><input type="checkbox" ${state.off.includes(o.id) ? '' : 'checked'}><span></span></label>
+          <small>${[w && `W${w}`, b && `B${b}`].filter(Boolean).join(' ')}</small>
+          ${o.errors.length ? `<small class="warn" title="${o.errors.join('\n').replace(/"/g, '&quot;')}">!</small>` : ''}
+          ${o.file ? '' : '<button title="Remove">✕</button>'}`;
+        row.querySelector('span').textContent = o.name;
+        row.querySelector('input').onchange = e => {
+          state.off = state.off.filter(id => id !== o.id);
+          if (!e.target.checked) state.off.push(o.id);
+          save(); newLine();
+        };
+        const del = row.querySelector('button');
+        if (del) del.onclick = () => {
+          if (!confirm(`Remove "${o.name}"?`)) return;
+          state.imported = state.imported.filter(x => x.id !== o.id);
+          save(); loadOpenings(); renderList(); newLine();
+        };
+        list.appendChild(row);
+      }
+      if (!openings.length) list.innerHTML = '<small style="color:var(--dim)">None yet</small>';
+    }
+
+    function renderSide() {
+      for (const b of document.querySelectorAll('#side button')) b.setAttribute('aria-pressed', b.dataset.side === state.side);
+    }
+
+    // ---- Arrows and circles (right-click drag, like lichess) ----
+    // Brushes match lichess: plain green, shift/ctrl red, alt blue, both yellow
+    const BRUSH = { g: '#15781b', r: '#882020', b: '#003088', y: '#e68f00' };
+    function brushFor(e) {
+      const red = e.shiftKey || e.ctrlKey;
+      return red && e.altKey ? 'y' : red ? 'r' : e.altKey ? 'b' : 'g';
+    }
+    function center(sq) {
+      const f = sq.charCodeAt(0) - 97, r = +sq[1] - 1, flip = state.side === 'b';
+      return [(flip ? 7 - f : f) + .5, (flip ? r : 7 - r) + .5];
+    }
+    function renderShapes() {
+      let html = '<defs>' + Object.entries(BRUSH).map(([k, c]) =>
+        `<marker id="ah-${k}" orient="auto" markerWidth="4" markerHeight="8" refX="2.05" refY="2.01"><path d="M0,0 V4 L3,2 Z" fill="${c}"/></marker>`).join('') + '</defs>';
+      const all = drawing ? [...shapes, drawing] : [...shapes];
+      // Engine's best move as a faint blue arrow, under the user's own arrows
+      const best = an && engine.info && engine.info.pv[0];
+      if (best && engine.cur === game.fen()) all.unshift({ from: best.slice(0, 2), to: best.slice(2, 4), brush: 'b', op: .4 });
+      for (const s of all) {
+        const [x1, y1] = center(s.from), [x2, y2] = center(s.to), c = BRUSH[s.brush], op = s.op || .8;
+        if (s.from === s.to) {
+          html += `<circle cx="${x1}" cy="${y1}" r=".46" fill="none" stroke="${c}" stroke-width=".0625" opacity="${op}"/>`;
+        } else {
+          // Stop short of the centre so the arrowhead tip lands inside the target square
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          html += `<line x1="${x1}" y1="${y1}" x2="${x2 - Math.cos(a) * .3}" y2="${y2 - Math.sin(a) * .3}" stroke="${c}" stroke-width=".156" stroke-linecap="round" marker-end="url(#ah-${s.brush})" opacity="${op}"/>`;
+        }
+      }
+      $('#shapes').innerHTML = html;
+    }
+    function toggleShape(d) {
+      const i = shapes.findIndex(s => s.from === d.from && s.to === d.to);
+      const same = i >= 0 && shapes[i].brush === d.brush;
+      if (i >= 0) shapes.splice(i, 1);
+      if (!same) shapes.push(d);
+    }
+
+    // ---- Premoves: queue a move while the opponent is thinking ----
+    const myTurn = () => !!an || (!busy && !done && game.turn() === state.side);
+    const preTurn = () => busy && !done && game.turn() !== state.side;
+    // Every square the piece could reach on an empty board, like lichess premove targets
+    function premoveDests(sq) {
+      const p = game.get(sq);
+      if (!p) return [];
+      const f = sq.charCodeAt(0) - 97, r = +sq[1] - 1, out = [];
+      const add = (df, dr) => { const x = f + df, y = r + dr; if (x >= 0 && x < 8 && y >= 0 && y < 8) out.push('abcdefgh'[x] + (y + 1)); };
+      const ray = dirs => { for (const [a, b] of dirs) for (let i = 1; i < 8; i++) add(a * i, b * i); };
+      const fwd = p.color === 'w' ? 1 : -1, home = p.color === 'w' ? 0 : 7;
+      if (p.type === 'p') { add(0, fwd); if (r === home + fwd) add(0, 2 * fwd); add(-1, fwd); add(1, fwd); }
+      if (p.type === 'n') for (const [a, b] of [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]) add(a, b);
+      if (p.type === 'k') {
+        for (const a of [-1, 0, 1]) for (const b of [-1, 0, 1]) if (a || b) add(a, b);
+        if (f === 4 && r === home) { add(2, 0); add(-2, 0); }
+      }
+      if ('rq'.includes(p.type)) ray([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+      if ('bq'.includes(p.type)) ray([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+      return out;
+    }
+    function play(from, to) {
+      if (an) return anMove(from, to);
+      if (!preTurn()) return attempt(from, to);
+      if (premoveDests(from).includes(to)) premove = { from, to };
+      selected = null;
+      render();
+    }
+
+    // ---- Input: click-to-move and drag ----
+    function sqFromPoint(x, y) { const el = document.elementFromPoint(x, y); return el && el.closest('.sq') ? el.closest('.sq').dataset.sq : null; }
+    function placeGhost(e) { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; }
+
+    function capture(e) { try { boardEl.setPointerCapture(e.pointerId); } catch {} }
+    boardEl.addEventListener('contextmenu', e => e.preventDefault());
+    boardEl.addEventListener('pointerdown', e => {
+      const el = e.target.closest('.sq');
+      if (!el) return;
+      const sq = el.dataset.sq;
+      if (e.button === 2) {
+        // Right-click also cancels a queued premove, as on lichess
+        if (premove || selected) { premove = null; selected = null; render(); }
+        drawing = { from: sq, to: sq, brush: brushFor(e) };
+        capture(e);
+        renderShapes();
+        return;
+      }
+      if (e.button !== 0) return;
+      if (shapes.length) { shapes = []; renderShapes(); }
+      if (!myTurn() && !preTurn()) return;
+      const p = game.get(sq), mover = an ? game.turn() : state.side;
+      if (p && p.color === mover) {
+        const wasSelected = selected === sq;
+        selected = sq;
+        drag = { from: sq, x: e.clientX, y: e.clientY, moved: false, wasSelected };
+        capture(e);
+        ghost.src = pieceSrc(p);
+        placeGhost(e);
+        render();
+        e.preventDefault();
+      } else if (selected) {
+        play(selected, sq);
+      } else if (premove) {
+        premove = null; render();
+      }
+    });
+    boardEl.addEventListener('pointermove', e => {
+      if (drawing) {
+        const to = sqFromPoint(e.clientX, e.clientY);
+        if (to && to !== drawing.to) { drawing.to = to; renderShapes(); }
+        return;
+      }
+      if (!drag) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4) return;
+      if (!drag.moved) { drag.moved = true; ghost.style.display = 'block'; render(); }
+      placeGhost(e);
+    });
+    boardEl.addEventListener('pointerup', e => {
+      if (drawing) { const d = drawing; drawing = null; toggleShape(d); return renderShapes(); }
+      if (!drag) return;
+      const d = drag; drag = null; ghost.style.display = 'none';
+      const to = sqFromPoint(e.clientX, e.clientY);
+      if (d.moved && to && to !== d.from) return play(d.from, to);
+      if (!d.moved && d.wasSelected) selected = null;
+      render();
+    });
+    boardEl.addEventListener('pointercancel', () => { drag = null; drawing = null; ghost.style.display = 'none'; render(); });
+
+    // ---- Controls ----
+    $('#hint').onclick = hint;
+    $('#next').onclick = newLine;
+    const nav = { first: () => 0, prev: () => an.ply - 1, next: () => an.ply + 1, last: () => an.moves.length };
+    for (const b of document.querySelectorAll('[data-nav]')) b.onclick = () => an && gotoPly(nav[b.dataset.nav]());
+    $('#moves').onclick = e => { const b = e.target.closest('[data-ply]'); if (an && b) gotoPly(+b.dataset.ply); };
+    // Arrow keys step through the analysis, as on lichess
+    const KEYS = { ArrowLeft: 'prev', ArrowRight: 'next', ArrowUp: 'first', ArrowDown: 'last', Home: 'first', End: 'last' };
+    document.addEventListener('keydown', e => {
+      if (!an || !KEYS[e.key] || e.target.closest('input, textarea, select')) return;
+      e.preventDefault();
+      gotoPly(nav[KEYS[e.key]]());
+    });
+    for (const b of document.querySelectorAll('#side button')) b.onclick = () => {
+      state.side = b.dataset.side; save(); renderSide(); newLine();
+    };
+
+    // ---- Import ----
+    function impMsg(text, bad) { const m = $('#impMsg'); m.textContent = text; m.className = bad ? 'bad' : ''; }
+    $('#impBtn').onclick = async () => {
+      const raw = $('#impText').value.trim();
+      if (!raw) return;
+      const color = $('#impColor').value;
+      let pgn = raw;
+      const link = raw.match(/lichess\.org\/study\/([A-Za-z0-9]{8})(?:\/([A-Za-z0-9]{8}))?/);
+      if (link && !raw.includes('[Event')) {
+        impMsg('Fetching…');
+        try {
+          const r = await fetch(`https://lichess.org/api/study/${link[1]}${link[2] ? '/' + link[2] : ''}.pgn`);
+          if (!r.ok) throw new Error(r.status === 404 ? 'not found (is the study public?)' : 'error ' + r.status);
+          pgn = await r.text();
+        } catch (err) {
+          return impMsg(`Couldn't fetch: ${err.message}. Paste the PGN instead.`, true);
+        }
+      }
+      const res = Book.parsePGN(pgn, color);
+      if (!res.chapters.length) return impMsg('No moves found', true);
+      const name = $('#impName').value.trim() || res.study || `Opening ${openings.length + 1}`;
+      state.imported.push({ id: 'imp:' + Date.now(), name, color, pgn });
+      save(); loadOpenings(); renderList();
+      $('#impText').value = ''; $('#impName').value = '';
+      const n = res.chapters.length;
+      impMsg(`Added ${name}: ${n} chapter${n > 1 ? 's' : ''}${res.errors.length ? `, ${res.errors.length} bad move(s) skipped` : ''}`);
+      newLine();
+    };
+
+    // Track who moved first so the move list numbers correctly from custom start positions
+    const origLoad = game.load.bind(game);
+    game.load = fen => { startTurn = fen.split(' ')[1]; return origLoad(fen); };
+
+    loadOpenings(); renderList(); renderSide(); newLine();
+  </script>
+</body>
