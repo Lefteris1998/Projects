@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Trap Trainer</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
   <style>
-    /* Lichess dark theme colours (the user found the hub's red too harsh for this one) */
+    /* Lichess dark theme colours */
     :root {
       --ink: #161512;
       --card: #262421;
@@ -14,116 +15,182 @@
       --line: #3d3a37;
       --text: #d9d9d9;
       --dim: #999;
-      --blood: #3692e7;
-      --blood-text: #e0605a;
+      --accent: #3692e7;
+      --bad: #e0605a;
       --ok: #629924;
       --light: #f0d9b5;
       --dark: #b58863;
       --sq: min(calc((100vw - 54px) / 8), calc((100vh - 140px) / 8), 76px);
     }
     * { box-sizing: border-box; }
-    [hidden] { display: none !important; }
     body { margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 'Noto Sans', 'Segoe UI', sans-serif;
       background: linear-gradient(to bottom, #2e2a24, var(--ink) 116px) no-repeat, var(--ink); }
     header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 6px; max-width: 1100px; margin: 0 auto; }
-    header a { color: var(--dim); text-decoration: none; font-size: 22px; line-height: 1; }
-    h1 { margin: 0; font: 500 24px/1 'Noto Sans', sans-serif; color: var(--text); }
+    header a { color: var(--dim); text-decoration: none; line-height: 1; }
+    header a .ms { font-size: 24px; vertical-align: middle; }
+    h1 { margin: 0; font: 500 24px/1 'Noto Sans', sans-serif; }
     #stats { margin-left: auto; font: 500 13px 'JetBrains Mono', monospace; color: var(--dim); }
     main { display: flex; gap: 20px; padding: 10px 16px 24px; max-width: 1100px; margin: 0 auto; align-items: flex-start; }
-    @media (max-width: 860px) { main { flex-direction: column; align-items: center; } aside { width: 100%; } }
+
+    /* Material Symbols icons */
+    .ms { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 22px; line-height: 1;
+      letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased; user-select: none; }
+
+    /* Buttons */
+    button, select, input, textarea { font: inherit; color: var(--text); }
+    button { background: var(--card-hi); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; touch-action: manipulation; transition: background .2s, border-color .2s; }
+    button:hover { border-color: #5c5955; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover { background: #4ba1f0; }
+    .icon { width: 30px; height: 30px; padding: 0; border-radius: 10px; display: grid; place-items: center; }
+    .square { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; }
+    .square[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
     /* Board */
     .play { display: flex; flex-direction: column; gap: 10px; }
+    .boardrow { display: flex; gap: 6px; }
+    #wrap { position: relative; }
     #board { display: grid; grid-template-columns: repeat(8, var(--sq)); grid-template-rows: repeat(8, var(--sq));
       border-radius: 4px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,0,0,.7); touch-action: none; user-select: none; }
+    #board.mine .sq { cursor: pointer; }
+    #board.nudge { animation: nudge .25s ease; }
+    @keyframes nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     .sq { position: relative; }
     .sq.light { background: var(--light); }
     .sq.dark { background: var(--dark); }
     .sq.last.light { background: #cdd26a; }
     .sq.last.dark { background: #aaa23a; }
+    .sq.check { background: radial-gradient(circle, #ff0000 0%, #e70000aa 25%, transparent 75%), var(--dark); }
     .sq.sel { box-shadow: inset 0 0 0 100px rgba(20, 85, 30, .5); }
+    .sq.pre { box-shadow: inset 0 0 0 100px rgba(20, 30, 85, .5); }
     .sq.miss { box-shadow: inset 0 0 0 100px rgba(200, 60, 50, .45); }
     .sq.hint { box-shadow: inset 0 0 0 4px #15781b, inset 0 0 0 100px rgba(20, 120, 27, .3); }
-    .sq.pre { box-shadow: inset 0 0 0 100px rgba(20, 30, 85, .5); }
-    .sq.pdot::after { content: ''; position: absolute; inset: 37%; border-radius: 50%; background: rgba(20, 30, 85, .5); }
-    #wrap { position: relative; }
-    #shapes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
-    .sq.check { background: radial-gradient(circle, #ff0000 0%, #e70000aa 25%, transparent 75%), var(--dark); }
-    .sq.dot::after { content: ''; position: absolute; inset: 37%; border-radius: 50%; background: rgba(20, 85, 30, .5); }
+    .sq.dot::after, .sq.pdot::after { content: ''; position: absolute; inset: 37%; border-radius: 50%; background: rgba(20, 85, 30, .5); }
+    .sq.pdot::after { background: rgba(20, 30, 85, .5); }
     .sq.cap::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 calc(var(--sq) * .08) rgba(20, 85, 30, .5); }
     .pc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
     .pc.lifted { opacity: .25; }
-    #ghost { position: fixed; width: var(--sq); height: var(--sq); pointer-events: none; z-index: 10; display: none; transform: translate(-50%, -50%) scale(1.1); }
-    .coord { position: absolute; font: 600 11px "Noto Sans", sans-serif; z-index: 2; pointer-events: none; }
+    .coord { position: absolute; font: 600 11px 'Noto Sans', sans-serif; z-index: 2; pointer-events: none; }
     .coord.r { top: 2px; left: 3px; }
     .coord.f { bottom: 1px; right: 4px; }
     .sq.light .coord { color: var(--dark); }
     .sq.dark .coord { color: var(--light); }
-    #board.mine .sq { cursor: pointer; }
-    @keyframes nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-    #board.nudge { animation: nudge .25s ease; }
+    #shapes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+    #ghost { position: fixed; width: var(--sq); height: var(--sq); pointer-events: none; z-index: 10; display: none; transform: translate(-50%, -50%) scale(1.1); }
+    .confetti { position: fixed; width: 7px; height: 7px; border-radius: 1px; pointer-events: none; z-index: 20; }
 
+    /* Status and controls under the board */
     .bar { display: flex; align-items: center; gap: 8px; }
-    #status { flex: 1; font-weight: 500; color: var(--dim); min-height: 1.4em; }
-    #status.bad { color: var(--blood-text); }
-    #status.ok { color: var(--ok); }
+    .tools { display: flex; gap: 6px; }
+    #status { flex: 1; text-align: center; font-weight: 500; color: var(--dim); }
+    #status.bad { color: var(--bad); }
+    /* A finished line: Next line glows softly (a slow pulse, no flashing) */
+    #next.ready { animation: ready 1.8s ease-in-out infinite; }
+    @keyframes ready {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(54, 146, 231, .55); }
+      50% { box-shadow: 0 0 0 7px rgba(54, 146, 231, 0), 0 0 18px rgba(54, 146, 231, .5); }
+    }
+    @media (prefers-reduced-motion: reduce) { #next.ready { animation: none; box-shadow: 0 0 14px rgba(54, 146, 231, .6); } }
 
-    button, select, input, textarea { font: inherit; color: var(--text); }
-    button { background: var(--card-hi); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; transition: background .2s, border-color .2s; }
-    button:hover { border-color: #806460; }
-    button.primary { background: var(--blood); border-color: var(--blood); color: #fff; }
-    button.primary:hover { background: #4ba1f0; }
-
-    /* Side panel */
+    /* Side panel cards */
     aside { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
     .card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+    .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .head h2 { margin: 0; }
     .seg { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; }
-    .seg button[aria-pressed="true"] { background: var(--blood); color: #fff; }
-    #list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+    .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+    /* Study notes */
+    #notes { height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+    #notes:empty::before { content: '—'; color: var(--dim); }
+    #notes .note { white-space: pre-line; color: var(--dim); }
+    #notes .note:last-child { color: var(--text); }
+    #notes .note b { font: 500 12px 'JetBrains Mono', monospace; color: var(--accent); margin-right: 6px; }
+    #notes .note.wrong, #notes .note.wrong b { color: var(--bad); }
+    .notes-off #notesCard { display: none; }
+
+    /* Openings list with expandable sidelines */
+    #list { display: flex; flex-direction: column; gap: 2px; max-height: 380px; overflow-y: auto; }
     .op { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; }
     .op:hover { background: var(--card-hi); }
+    .op.sub { padding: 4px 8px 4px 38px; font-size: 14px; }
     .op label { flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .op input { accent-color: var(--blood); width: 16px; height: 16px; }
+    .op input { accent-color: var(--accent); width: 16px; height: 16px; }
     .op small { color: var(--dim); font: 500 12px 'JetBrains Mono', monospace; }
-    .op .warn { color: var(--blood-text); }
     .op button { padding: 2px 8px; border: 0; background: transparent; color: var(--dim); }
-    .op button:hover { color: var(--blood-text); }
-    #moves { font: 500 13px/1.8 'JetBrains Mono', monospace; color: var(--dim); min-height: 1.8em; }
-    #moves b { color: var(--text); font-weight: 500; padding: 1px 3px; border-radius: 4px; }
-    .analysis #moves b { cursor: pointer; }
-    .analysis #moves b:hover { background: var(--card-hi); }
-    #moves b.cur { background: #3692e755; }
+    .op .caret { width: 24px; height: 24px; padding: 0; flex: none; display: grid; place-items: center; color: var(--text); transition: transform .2s; }
+    .op .caret.open { transform: rotate(90deg); }
+    .op .caret .ms { font-size: 20px; }
+    .op .del, .op .warn { display: grid; place-items: center; }
+    .op .del .ms, .op .warn .ms { font-size: 18px; }
+    .op .warn, .op .del:hover { color: var(--bad); }
 
-    /* Analysis: lichess-style eval bar, engine line and move navigation */
-    .boardrow { display: flex; gap: 6px; }
+    /* Stockfish: fixed height and a one-line PV, so the panel doesn't jump as the engine updates */
     #evalbar { width: 14px; position: relative; overflow: hidden; border-radius: 3px; background: #403d39; display: none; }
     #evalFill { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: #fff; transition: height .4s ease; }
     #evalbar.flip #evalFill { bottom: auto; top: 0; }
-    .analysis #evalbar { display: block; }
     #engine { display: none; }
-    .analysis #engine { display: block; }
-    #evalText { font: 500 13px/1.5 'JetBrains Mono', monospace; color: var(--dim); }
-    #evalText b { font-size: 20px; color: var(--text); margin-right: 8px; }
-    #evalText .pv { margin-top: 4px; color: var(--text); }
-    .an-only { display: none; }
-    .analysis .an-only { display: inline-flex; }
+    .analysis #evalbar, .analysis #engine { display: block; }
     .analysis .train-only { display: none; }
-    .bar a.an-only { color: var(--dim); text-decoration: none; padding: 8px 6px; }
-    .bar a.an-only:hover { color: var(--text); }
+    #evalText { height: 52px; overflow: hidden; font: 500 13px/1.5 'JetBrains Mono', monospace; color: var(--dim); }
+    #evalText b { font-size: 20px; color: var(--text); margin-right: 8px; }
+    #evalText .pv { margin-top: 2px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Move list laid out like lichess: number column, then white and black moves */
+    .movecard { padding: 0; overflow: hidden; }
+    #moves { display: grid; grid-template-columns: 13% 43.5% 43.5%; max-height: 300px; overflow-y: auto; font-size: 15px; line-height: 2.1em; color: #bababa; }
+    .movecard:has(#moves:empty) { display: none; }
+    #moves .idx { background: #302e2c; color: #8b8987; text-align: center; border-right: 1px solid var(--line); font-size: 13px; }
+    #moves .mv { padding-left: 10px; cursor: pointer; }
+    #moves .mv:hover { background: #1b78d0; color: #fff; }
+    #moves .mv.cur { background: #293a49; color: #fff; font-weight: 600; }
+    #moves .mv.miss { color: var(--bad); }
+    #moves .mv.miss:hover { color: #fff; }
+    #moves .empty { color: #6b6966; padding-left: 10px; }
+
+    /* Add dialog */
+    dialog { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 16px; width: min(480px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(0, 0, 0, .6); }
     .imp { display: flex; flex-direction: column; gap: 8px; }
     .imp .row { display: flex; gap: 8px; }
     .imp input, .imp select, .imp textarea { background: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
     .imp input { flex: 1; min-width: 0; }
     .imp textarea { min-height: 70px; resize: vertical; font: 12px/1.4 'JetBrains Mono', monospace; }
     #impMsg { font-size: 13px; color: var(--dim); min-height: 1.2em; }
-    #impMsg.bad { color: var(--blood-text); }
+    #impMsg.bad { color: var(--bad); }
+
+    /* Narrow screens: the panel goes under the board */
+    @media (max-width: 860px) {
+      main { flex-direction: column; align-items: center; }
+      aside { width: 100%; }
+    }
+    /* Phones: wider board; the control buttons fill the first row, status, Hint and Next line the second */
+    @media (max-width: 600px) {
+      :root { --sq: min(calc((100vw - 44px) / 8), 76px); }
+      header { padding: 10px 12px 4px; }
+      h1 { font-size: 20px; }
+      main { padding: 6px 12px 20px; gap: 14px; }
+      aside { min-width: 0; }
+      .bar { flex-wrap: wrap; gap: 6px; }
+      .tools { flex: 0 0 100%; }
+      .tools button { flex: 1; width: auto; height: 44px; }
+      #status { flex: 0 0 100%; text-align: left; }
+      #status:empty { display: none; }
+      #hint, #next { flex: 1; height: 44px; }
+      .imp .row { flex-wrap: wrap; }
+    }
+    /* Touch screens: no sticky hover highlights */
+    @media (hover: none) {
+      .op:hover { background: none; }
+      #moves .mv:hover { background: none; color: inherit; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <a href="../" title="Projects">‹</a>
+    <a href="../index.html" title="Projects"><span class="ms">arrow_back</span></a>
     <h1>Trap Trainer</h1>
     <span id="stats"></span>
   </header>
@@ -134,13 +201,16 @@
         <div id="wrap"><div id="board"></div><svg id="shapes" viewBox="0 0 8 8"></svg></div>
       </div>
       <div class="bar">
+        <div class="tools">
+          <button class="square" data-nav="first" title="Start"><span class="ms">first_page</span></button>
+          <button class="square" data-nav="prev" title="Back"><span class="ms">chevron_left</span></button>
+          <button class="square" data-nav="next" title="Forward"><span class="ms">chevron_right</span></button>
+          <button class="square" data-nav="last" title="End"><span class="ms">last_page</span></button>
+          <button class="square" id="replay" title="Replay this line"><span class="ms">replay</span></button>
+          <button class="square" id="notesBtn" title="Study notes and arrows"><span class="ms">sticky_note_2</span></button>
+        </div>
         <span id="status"></span>
         <button id="hint" class="train-only">Hint</button>
-        <button class="an-only" data-nav="first" title="Start">⏮</button>
-        <button class="an-only" data-nav="prev" title="Back">◀</button>
-        <button class="an-only" data-nav="next" title="Forward">▶</button>
-        <button class="an-only" data-nav="last" title="End">⏭</button>
-        <a class="an-only" id="lichess" target="_blank" rel="noopener" title="Open on lichess">lichess ↗</a>
         <button id="next" class="primary">Next line</button>
       </div>
     </section>
@@ -151,34 +221,45 @@
           <button data-side="b">Play black</button>
         </div>
       </div>
+      <div class="card" id="notesCard">
+        <h2>Notes</h2>
+        <div id="notes"></div>
+      </div>
       <div class="card">
-        <h2>Openings</h2>
+        <div class="head">
+          <h2>Openings</h2>
+          <button class="icon" id="addOpen" title="Add opening"><span class="ms">add</span></button>
+        </div>
         <div id="list"></div>
       </div>
       <div class="card" id="engine">
         <h2>Stockfish</h2>
         <div id="evalText"></div>
       </div>
-      <div class="card">
-        <h2>Moves</h2>
+      <div class="card movecard">
         <div id="moves"></div>
-      </div>
-      <div class="card imp">
-        <h2>Add</h2>
-        <textarea id="impText" placeholder="lichess study link or PGN"></textarea>
-        <div class="row">
-          <input id="impName" placeholder="Name (optional)">
-          <select id="impColor">
-            <option value="">Side: auto</option>
-            <option value="white">White</option>
-            <option value="black">Black</option>
-          </select>
-          <button id="impBtn" class="primary">Add</button>
-        </div>
-        <div id="impMsg"></div>
       </div>
     </aside>
   </main>
+  <dialog id="addDlg">
+    <div class="imp">
+      <div class="head">
+        <h2>Add opening</h2>
+        <button class="icon" id="addClose" title="Close"><span class="ms">close</span></button>
+      </div>
+      <textarea id="impText" placeholder="lichess study link or PGN"></textarea>
+      <div class="row">
+        <input id="impName" placeholder="Name (optional)">
+        <select id="impColor">
+          <option value="">Side: auto</option>
+          <option value="white">White</option>
+          <option value="black">Black</option>
+        </select>
+        <button id="impBtn" class="primary">Add</button>
+      </div>
+      <div id="impMsg"></div>
+    </div>
+  </dialog>
   <img id="ghost" alt="">
 
   <script src="chess.js"></script>
@@ -191,16 +272,37 @@
     const pieceSrc = p => `pieces/cburnett/${p.color}${p.type.toUpperCase()}.svg`;
     const pick = a => a[Math.floor(Math.random() * a.length)];
 
-    const state = Object.assign({ imported: [], off: [], side: 'w' }, read());
+    // ---- Saved settings: imported openings, switched-off openings/sidelines, side, notes toggle ----
+    const state = Object.assign({ imported: [], off: [], offCh: [], side: 'w', notes: true }, read());
     function read() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } }
     function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
 
+    // ---- Game state ----
     let openings = [], book;
     const game = new Chess();
-    let selected = null, last = null, marks = {}, busy = false, done = false, token = 0, posMisses = 0, drag = null;
+    let lineStart = null, startTurn = 'w', startMove = 1;  // where the line began, for replays and move numbers
+    let selected = null, last = null, marks = {}, drag = null;
+    let busy = false, done = false, token = 0;          // token cancels a pending opponent move
+    let posMisses = 0, missNote = '';                   // misses at this move; a gamebook's explanation for the last one
+    let missed = {};                                    // ply -> wrong moves tried there: [{ san, from, to }]
     let premove = null, shapes = [], drawing = null;
-    let an = null, lineStart = null;  // an: analysis board { start, moves, ply }
+    let an = null;                                      // analysis board { start, moves, ply }
+    let view = null, shownPos = game;                   // ply being looked back at while training (visual only)
+    let played = [], script = null;                     // the finished line's moves; the moves a replay repeats
     const stats = { lines: 0, misses: 0 };
+
+    // A move you only found after a mistake (in analysis, as long as the line still matches)
+    const wrongAt = j => !!missed[j] && (!an || an.moves[j] === played[j]);
+    const plyNow = () => an ? an.ply : view === null ? game.history().length : view;
+    const plyEnd = () => an ? an.moves.length : game.history().length;
+    const myTurn = () => !!an || (!busy && !done && game.turn() === state.side);
+    const preTurn = () => busy && !done && game.turn() !== state.side;
+
+    function loadPos(fen) {
+      const f = fen.split(' ');
+      startTurn = f[1]; startMove = +f[5] || 1;
+      game.load(fen);
+    }
 
     function loadOpenings() {
       const src = [
@@ -212,28 +314,36 @@
 
     function bookMoves() { return [...(book.moves[Book.key(game.fen())] || [])]; }
 
+    // A chapter (sideline) plays when its opening is on and the chapter itself isn't switched off
+    const chKey = (o, c) => o.id + '|' + c.name;
+    const chOn = (o, c) => !state.off.includes(o.id) && !state.offCh.includes(chKey(o, c));
+
     // ---- Practice loop ----
-    function newLine() {
+    // replay === true restarts the same line: same start, and the opponent repeats its moves
+    function newLine(replay) {
+      const again = replay === true && lineStart ? { start: lineStart, moves: an ? played : game.history() } : null;
       token++;
-      const active = openings.filter(o => !state.off.includes(o.id)).flatMap(o => o.chapters);
-      book = Book.buildBook(active)[state.side];
-      selected = null; last = null; marks = {}; posMisses = 0; done = false; busy = false; premove = null; shapes = [];
+      book = Book.buildBook(openings.flatMap(o => o.chapters.filter(c => chOn(o, c))))[state.side];
+      selected = null; last = null; marks = {}; posMisses = 0; missNote = ''; missed = {};
+      done = false; busy = false; premove = null; shapes = []; view = null;
       closeAnalysis();
       const starts = [...book.starts];
-      if (!starts.length) {
-        game.reset(); render();
+      if (!again && !starts.length) {
+        loadPos(new Chess().fen()); render();
         return setStatus(openings.length ? `No ${state.side === 'w' ? 'white' : 'black'} lines selected` : 'Add an opening');
       }
-      game.load(lineStart = pick(starts));
+      loadPos(lineStart = again ? again.start : pick(starts));
+      script = again ? again.moves : null;
       step();
     }
 
     function step() {
+      view = null;
       render();
       const opts = bookMoves();
       if (!opts.length) return finish();
       if (game.turn() === state.side) {
-        busy = false; setStatus('Your move');
+        busy = false; setStatus('');
         if (premove) { const pm = premove; premove = null; attempt(pm.from, pm.to); }
         return;
       }
@@ -241,22 +351,94 @@
       const t = token;
       setTimeout(() => {
         if (t !== token) return;
-        const m = game.move(pick(opts));
-        last = m; marks = {}; posMisses = 0;
+        const want = script && script[game.history().length];
+        last = game.move(want && opts.includes(want) ? want : pick(opts));
+        marks = {}; posMisses = 0; missNote = '';
         step();
       }, 450);
     }
 
+    function attempt(from, to) {
+      if (busy || done || game.turn() !== state.side) return;
+      const legal = game.moves({ verbose: true }).filter(m => m.from === from && m.to === to);
+      selected = null;
+      if (!legal.length) return render();
+      const opts = bookMoves();
+      const hit = legal.find(m => opts.includes(m.san));
+      if (hit) {
+        last = game.move(hit.san); marks = {}; posMisses = 0; missNote = '';
+        return step();
+      }
+      const san = legal[0].san, ply = game.history().length;
+      stats.misses++; posMisses++;
+      if (!(missed[ply] ||= []).some(x => x.san === san)) missed[ply].push({ san, from, to });
+      missNote = book.wrong[Book.key(game.fen()) + ' ' + san] || '';
+      marks = { [to]: 'miss' };
+      setStatus('Not the line', 'bad');
+      boardEl.classList.remove('nudge'); void boardEl.offsetWidth; boardEl.classList.add('nudge');
+      if (posMisses >= 2) return hint();
+      render();
+    }
+
+    function hint() {
+      if (busy || done || game.turn() !== state.side) return;
+      const opts = bookMoves();
+      marks = {};
+      for (const m of game.moves({ verbose: true })) if (opts.includes(m.san)) marks[m.from] = marks[m.to] = 'hint';
+      render();
+    }
+
     function finish() {
       busy = false; done = true; stats.lines++;
-      setStatus('Line complete', 'ok');
+      setStatus('');
+      confetti();
       openAnalysis();
     }
 
-    // ---- Analysis board: free play for both sides from the finished line ----
+    function setStatus(text, cls = '') { const s = $('#status'); s.textContent = text; s.className = cls; }
+
+    // A small burst from the Next line button; skipped if the system asks for reduced motion
+    function confetti() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const r = $('#next').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const colors = ['#3692e7', '#629924', '#e68f00', '#f0d9b5', '#e0605a', '#ffffff'];
+      for (let i = 0; i < 60; i++) {
+        const d = document.createElement('i');
+        d.className = 'confetti';
+        d.style.cssText = `left:${x}px;top:${y}px;background:${colors[i % colors.length]}`;
+        document.body.appendChild(d);
+        const a = -Math.PI / 2 + (Math.random() - .5) * 1.8, v = 120 + Math.random() * 220;
+        const dx = Math.cos(a) * v, dy = Math.sin(a) * v, spin = Math.random() * 720;
+        d.animate([
+          { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+          { transform: `translate(${dx}px, ${dy}px) rotate(${spin / 2}deg)`, opacity: 1, offset: .45 },
+          { transform: `translate(${dx * 1.4}px, ${dy + 280}px) rotate(${spin}deg)`, opacity: 0 },
+        ], { duration: 1500 + Math.random() * 700, easing: 'cubic-bezier(.2, .6, .4, 1)', fill: 'forwards' });
+        setTimeout(() => d.remove(), 2400);
+      }
+    }
+
+    // ---- Looking back while training: shows a past position without changing the game ----
+    function shown() {
+      if (an || view === null) return { pos: game, lastMove: last };
+      const c = new Chess(lineStart);
+      let lastMove = null;
+      for (const san of game.history().slice(0, view)) lastMove = c.move(san);
+      return { pos: c, lastMove };
+    }
+    function setView(n) {
+      const len = game.history().length;
+      n = Math.max(0, Math.min(len, n));
+      view = n >= len ? null : n;
+      selected = null; drag = null;
+      render();
+    }
+
+    // ---- Analysis board: free play for both sides once a line is done ----
     function openAnalysis() {
       token++;
       const moves = game.history();
+      played = moves.slice();
       an = { start: lineStart, moves, ply: moves.length };
       premove = null; selected = null; marks = {};
       document.body.classList.add('analysis');
@@ -271,7 +453,7 @@
     }
     function gotoPly(n) {
       an.ply = Math.max(0, Math.min(an.moves.length, n));
-      game.load(an.start);
+      loadPos(an.start);
       last = null;
       for (const san of an.moves.slice(0, an.ply)) last = game.move(san);
       selected = null; marks = {};
@@ -286,11 +468,7 @@
       an.ply++; last = m;
       render(); analyse();
     }
-    function lichessUrl() {
-      if (an.start.split(' ')[0] !== 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR') return 'https://lichess.org/analysis/' + game.fen().replace(/ /g, '_');
-      const pgn = an.moves.map((s, i) => (i % 2 ? '' : `${i / 2 + 1}. `) + s).join(' ');
-      return 'https://lichess.org/analysis/pgn/' + encodeURIComponent(pgn) + '#' + an.ply;
-    }
+    const goPly = n => an ? gotoPly(n) : setView(n);
 
     // ---- Stockfish (a Web Worker, so it only runs over http via start.bat, not file://) ----
     const engine = { w: null, ok: null, ready: false, searching: false, cur: null, want: null, info: null };
@@ -310,8 +488,9 @@
       if (!an) return;
       engine.info = null;
       engine.want = game.game_over() ? null : game.fen();
+      if (engine.want) engineStart();
       showEval(); renderShapes();
-      if (engine.want && engineStart()) kick();
+      if (engine.want && engine.ok) kick();
     }
     // One search at a time: a new position stops the old search, and starts once its bestmove arrives
     function kick() {
@@ -328,10 +507,11 @@
       if (!line.startsWith('info') || !line.includes(' pv ') || engine.want || !an || engine.cur !== game.fen()) return;
       const t = line.split(' '), at = k => t[t.indexOf(k) + 1];
       if (t.includes('multipv') && at('multipv') !== '1') return;
+      const score = +t[t.indexOf('score') + 2];
       engine.info = {
         depth: +at('depth'),
-        cp: at('score') === 'cp' ? +t[t.indexOf('score') + 2] : null,
-        mate: at('score') === 'mate' ? +t[t.indexOf('score') + 2] : null,
+        cp: at('score') === 'cp' ? score : null,
+        mate: at('score') === 'mate' ? score : null,
         pv: t.slice(t.indexOf('pv') + 1),
       };
       showEval(); renderShapes();
@@ -340,12 +520,12 @@
       if (!an) return;
       const box = $('#evalText'), fill = $('#evalFill');
       $('#evalbar').classList.toggle('flip', state.side === 'b');
-      $('#lichess').href = lichessUrl();
       if (game.in_checkmate()) { box.innerHTML = '<b>#</b>Checkmate'; fill.style.height = game.turn() === 'w' ? '0%' : '100%'; return; }
       if (game.game_over()) { box.innerHTML = '<b>½</b>Draw'; fill.style.height = '50%'; return; }
       if (engine.ok === false) { box.textContent = 'Open with start.bat to use the engine'; return; }
       const i = engine.info;
-      if (!i) { box.textContent = 'Thinking…'; return; }
+      // Keep the last eval on screen while the next one computes
+      if (!i) { if (!box.querySelector('.pv')) box.textContent = 'Thinking…'; return; }
       // Scores come from the side to move; show them from white's view like lichess
       const sign = game.turn() === 'w' ? 1 : -1;
       let txt, pct;
@@ -362,42 +542,16 @@
       fill.style.height = pct + '%';
     }
 
-    function attempt(from, to) {
-      if (busy || done || game.turn() !== state.side) return;
-      const legal = game.moves({ verbose: true }).filter(m => m.from === from && m.to === to);
-      selected = null;
-      if (!legal.length) return render();
-      const opts = bookMoves();
-      const hit = legal.find(m => opts.includes(m.san));
-      if (hit) {
-        last = game.move(hit.san); marks = {}; posMisses = 0;
-        return step();
-      }
-      stats.misses++; posMisses++;
-      marks = { [to]: 'miss' };
-      setStatus('Not the line', 'bad');
-      boardEl.classList.remove('nudge'); void boardEl.offsetWidth; boardEl.classList.add('nudge');
-      if (posMisses >= 2) return hint();
-      render();
-    }
-
-    function hint() {
-      if (busy || done || game.turn() !== state.side) return;
-      const opts = bookMoves();
-      marks = {};
-      for (const m of game.moves({ verbose: true })) if (opts.includes(m.san)) marks[m.from] = marks[m.to] = 'hint';
-      render();
-    }
-
-    function setStatus(text, cls = '') { const s = $('#status'); s.textContent = text; s.className = cls; }
-
     // ---- Rendering ----
     function render() {
       const flip = state.side === 'b';
+      const { pos, lastMove } = shown();
+      const viewing = pos !== game;
+      shownPos = pos;
       const pre = preTurn();
-      const targets = !selected ? [] : pre ? premoveDests(selected) : game.moves({ square: selected, verbose: true }).map(m => m.to);
-      const inCheck = game.in_check();
-      boardEl.classList.toggle('mine', myTurn());
+      const targets = !selected || viewing ? [] : pre ? premoveDests(selected) : game.moves({ square: selected, verbose: true }).map(m => m.to);
+      const inCheck = pos.in_check();
+      boardEl.classList.toggle('mine', myTurn() && !viewing);
       boardEl.innerHTML = '';
       for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
         const f = flip ? 7 - c : c, rank = flip ? r + 1 : 8 - r;
@@ -405,17 +559,19 @@
         const el = document.createElement('div');
         el.className = 'sq ' + ((f + rank) % 2 ? 'light' : 'dark');
         el.dataset.sq = sq;
-        if (last && (sq === last.from || sq === last.to)) el.classList.add('last');
-        if (sq === selected) el.classList.add(pre ? 'pre' : 'sel');
-        if (premove && (sq === premove.from || sq === premove.to)) el.classList.add('pre');
-        if (marks[sq]) el.classList.add(marks[sq]);
-        const p = game.get(sq);
+        if (lastMove && (sq === lastMove.from || sq === lastMove.to)) el.classList.add('last');
+        if (!viewing) {
+          if (sq === selected) el.classList.add(pre ? 'pre' : 'sel');
+          if (premove && (sq === premove.from || sq === premove.to)) el.classList.add('pre');
+          if (marks[sq]) el.classList.add(marks[sq]);
+        }
+        const p = pos.get(sq);
         if (p) {
           const img = document.createElement('img');
           img.className = 'pc'; img.src = pieceSrc(p); img.alt = ''; img.draggable = false;
           if (drag && drag.moved && drag.from === sq) img.classList.add('lifted');
           el.appendChild(img);
-          if (p.type === 'k' && p.color === game.turn() && inCheck) el.classList.add('check');
+          if (p.type === 'k' && p.color === pos.turn() && inCheck) el.classList.add('check');
         }
         if (targets.includes(sq)) el.classList.add(pre ? 'pdot' : p ? 'cap' : 'dot');
         if (c === 0) el.insertAdjacentHTML('beforeend', `<span class="coord r">${rank}</span>`);
@@ -424,46 +580,124 @@
       }
       renderMoves();
       renderShapes();
+      renderNotes();
       $('#stats').textContent = `${stats.lines} done · ${stats.misses} missed`;
-      $('#next').classList.toggle('primary', done);
+      $('#next').classList.toggle('ready', done);
     }
 
     function renderMoves() {
       const hist = an ? an.moves : game.history();
-      const mv = j => `<b data-ply="${j + 1}"${an && an.ply === j + 1 ? ' class="cur"' : ''}>${hist[j]}</b> `;
-      let html = '', n = 1, i = 0;
-      if (startTurn === 'b' && hist.length) { html += `1… ${mv(0)}`; i = 1; n = 2; }
-      for (; i < hist.length; i += 2, n++) html += `${n}. ${mv(i)}${hist[i + 1] ? mv(i + 1) : ''}`;
-      $('#moves').innerHTML = html || '—';
+      const cur = an ? an.ply : view;
+      // Moves you only found after a mistake stay red
+      const mv = j => {
+        if (j >= hist.length) return '<span></span>';
+        const cls = ['mv', cur === j + 1 && 'cur', wrongAt(j) && 'miss'].filter(Boolean).join(' ');
+        const tip = wrongAt(j) ? ` title="You tried ${missed[j].map(x => x.san).join(', ')}"` : '';
+        return `<span data-ply="${j + 1}" class="${cls}"${tip}>${hist[j]}</span>`;
+      };
+      // Rows of [number, white, black]; a line starting with black gets "…" in the white cell
+      let html = '', n = startMove, i = 0;
+      if (startTurn === 'b' && hist.length) { html += `<span class="idx">${n}</span><span class="empty">…</span>${mv(0)}`; i = 1; n++; }
+      for (; i < hist.length; i += 2, n++) html += `<span class="idx">${n}</span>${mv(i)}${mv(i + 1)}`;
+      const box = $('#moves');
+      box.innerHTML = html;
+      const on = box.querySelector('.cur') || box.lastElementChild;
+      if (on) box.scrollTop = Math.max(0, on.offsetTop - box.clientHeight / 2);
     }
-    let startTurn = 'w';
 
+    // Study notes: the comments along the line so far, newest at the bottom
+    let notesSig = '';
+    function renderNotes() {
+      document.body.classList.toggle('notes-off', !state.notes);
+      $('#notesBtn').setAttribute('aria-pressed', state.notes);
+      const items = [];
+      const start = an ? an.start : lineStart;
+      if (state.notes && book && start) {
+        const hist = an ? an.moves : game.history();
+        const c = new Chess(start);
+        const label = (i, san) => {
+          const p = i + (startTurn === 'w' ? 0 : 1), n = Math.floor(p / 2) + startMove;
+          return p % 2 ? `${n}… ${san}` : `${n}. ${san}`;
+        };
+        const add = text => { for (const t of book.notes[Book.key(c.fen())] || []) items.push({ label: text, text: t }); };
+        add('');
+        for (let i = 0; i < plyNow(); i++) { const m = c.move(hist[i]); if (!m) break; add(label(i, m.san)); }
+        if (missNote && !an && view === null) items.push({ label: '✕', text: missNote, wrong: true });
+      }
+      // Only rebuild when the notes change, so the panel doesn't flicker or lose its scroll
+      const sig = JSON.stringify(items);
+      if (sig === notesSig) return;
+      notesSig = sig;
+      const box = $('#notes');
+      box.innerHTML = '';
+      for (const it of items) {
+        const d = document.createElement('div');
+        d.className = 'note' + (it.wrong ? ' wrong' : '');
+        if (it.label) { const b = document.createElement('b'); b.textContent = it.label; d.appendChild(b); }
+        d.appendChild(document.createTextNode(it.text));
+        box.appendChild(d);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    const expanded = new Set();
     function renderList() {
       const list = $('#list');
-      list.innerHTML = '';
+      list.innerHTML = openings.length ? '' : '<small style="color:var(--dim)">None yet</small>';
       for (const o of openings) {
         const w = o.chapters.filter(c => c.side !== 'b').length, b = o.chapters.filter(c => c.side !== 'w').length;
+        const on = o.chapters.filter(c => chOn(o, c)).length;
+        const many = o.chapters.length > 1, open = many && expanded.has(o.id);
         const row = document.createElement('div');
         row.className = 'op';
-        row.innerHTML = `<label><input type="checkbox" ${state.off.includes(o.id) ? '' : 'checked'}><span></span></label>
+        row.innerHTML = `${many ? `<button class="caret${open ? ' open' : ''}" title="Sidelines"><span class="ms">chevron_right</span></button>` : '<span class="caret"></span>'}
+          <label><input type="checkbox" ${on ? 'checked' : ''}><span></span></label>
           <small>${[w && `W${w}`, b && `B${b}`].filter(Boolean).join(' ')}</small>
-          ${o.errors.length ? `<small class="warn" title="${o.errors.join('\n').replace(/"/g, '&quot;')}">!</small>` : ''}
-          ${o.file ? '' : '<button title="Remove">✕</button>'}`;
-        row.querySelector('span').textContent = o.name;
-        row.querySelector('input').onchange = e => {
+          ${o.errors.length ? `<small class="warn" title="${o.errors.join('\n').replace(/"/g, '&quot;')}"><span class="ms">error</span></small>` : ''}
+          ${o.file ? '' : '<button class="del" title="Remove"><span class="ms">delete</span></button>'}`;
+        row.querySelector('label span').textContent = o.name;
+        const box = row.querySelector('input');
+        box.indeterminate = on > 0 && on < o.chapters.length;
+        box.onchange = () => {
           state.off = state.off.filter(id => id !== o.id);
-          if (!e.target.checked) state.off.push(o.id);
-          save(); newLine();
+          state.offCh = state.offCh.filter(k => !k.startsWith(o.id + '|'));
+          if (!box.checked) state.off.push(o.id);
+          save(); renderList(); newLine();
         };
-        const del = row.querySelector('button');
+        if (many) row.querySelector('.caret').onclick = () => {
+          expanded.has(o.id) ? expanded.delete(o.id) : expanded.add(o.id);
+          renderList();
+        };
+        const del = row.querySelector('.del');
         if (del) del.onclick = () => {
           if (!confirm(`Remove "${o.name}"?`)) return;
           state.imported = state.imported.filter(x => x.id !== o.id);
           save(); loadOpenings(); renderList(); newLine();
         };
         list.appendChild(row);
+        if (open) for (const c of o.chapters) list.appendChild(sidelineRow(o, c));
       }
-      if (!openings.length) list.innerHTML = '<small style="color:var(--dim)">None yet</small>';
+    }
+    function sidelineRow(o, c) {
+      const row = document.createElement('div');
+      row.className = 'op sub';
+      row.innerHTML = '<label><input type="checkbox"><span></span></label>';
+      // "Halloween Gambit, Pin" reads as just "Pin" under its opening
+      row.querySelector('span').textContent = c.name.startsWith(o.name + ', ') ? c.name.slice(o.name.length + 2) : c.name;
+      const box = row.querySelector('input');
+      box.checked = chOn(o, c);
+      box.onchange = () => {
+        const k = chKey(o, c);
+        if (state.off.includes(o.id)) {
+          // Picking a sideline of a switched-off opening plays just that sideline
+          state.off = state.off.filter(id => id !== o.id);
+          state.offCh = state.offCh.filter(x => !x.startsWith(o.id + '|')).concat(o.chapters.map(x => chKey(o, x)).filter(x => x !== k));
+        } else {
+          state.offCh = box.checked ? state.offCh.filter(x => x !== k) : state.offCh.concat(k);
+        }
+        save(); renderList(); newLine();
+      };
+      return row;
     }
 
     function renderSide() {
@@ -473,6 +707,8 @@
     // ---- Arrows and circles (right-click drag, like lichess) ----
     // Brushes match lichess: plain green, shift/ctrl red, alt blue, both yellow
     const BRUSH = { g: '#15781b', r: '#882020', b: '#003088', y: '#e68f00' };
+    const MARKERS = '<defs>' + Object.entries(BRUSH).map(([k, c]) =>
+      `<marker id="ah-${k}" orient="auto" markerWidth="4" markerHeight="8" refX="2.05" refY="2.01"><path d="M0,0 V4 L3,2 Z" fill="${c}"/></marker>`).join('') + '</defs>';
     function brushFor(e) {
       const red = e.shiftKey || e.ctrlKey;
       return red && e.altKey ? 'y' : red ? 'r' : e.altKey ? 'b' : 'g';
@@ -481,13 +717,17 @@
       const f = sq.charCodeAt(0) - 97, r = +sq[1] - 1, flip = state.side === 'b';
       return [(flip ? 7 - f : f) + .5, (flip ? r : 7 - r) + .5];
     }
+    // Drawn bottom to top: engine best move, study arrows, your mistakes, then your own arrows
     function renderShapes() {
-      let html = '<defs>' + Object.entries(BRUSH).map(([k, c]) =>
-        `<marker id="ah-${k}" orient="auto" markerWidth="4" markerHeight="8" refX="2.05" refY="2.01"><path d="M0,0 V4 L3,2 Z" fill="${c}"/></marker>`).join('') + '</defs>';
-      const all = drawing ? [...shapes, drawing] : [...shapes];
-      // Engine's best move as a faint blue arrow, under the user's own arrows
+      const all = [];
       const best = an && engine.info && engine.info.pv[0];
-      if (best && engine.cur === game.fen()) all.unshift({ from: best.slice(0, 2), to: best.slice(2, 4), brush: 'b', op: .4 });
+      if (best && engine.cur === game.fen()) all.push({ from: best.slice(0, 2), to: best.slice(2, 4), brush: 'b', op: .4 });
+      if (state.notes && book) for (const s of book.shapes[Book.key(shownPos.fen())] || []) all.push({ ...s, op: .6 });
+      const ply = plyNow();
+      if (ply > 0 && wrongAt(ply - 1)) for (const m of missed[ply - 1]) all.push({ ...m, brush: 'r', op: .45 });
+      all.push(...shapes);
+      if (drawing) all.push(drawing);
+      let html = MARKERS;
       for (const s of all) {
         const [x1, y1] = center(s.from), [x2, y2] = center(s.to), c = BRUSH[s.brush], op = s.op || .8;
         if (s.from === s.to) {
@@ -508,8 +748,6 @@
     }
 
     // ---- Premoves: queue a move while the opponent is thinking ----
-    const myTurn = () => !!an || (!busy && !done && game.turn() === state.side);
-    const preTurn = () => busy && !done && game.turn() !== state.side;
     // Every square the piece could reach on an empty board, like lichess premove targets
     function premoveDests(sq) {
       const p = game.get(sq);
@@ -536,11 +774,11 @@
       render();
     }
 
-    // ---- Input: click-to-move and drag ----
+    // ---- Board input: click-to-move, drag, right-click drawing ----
     function sqFromPoint(x, y) { const el = document.elementFromPoint(x, y); return el && el.closest('.sq') ? el.closest('.sq').dataset.sq : null; }
     function placeGhost(e) { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; }
-
     function capture(e) { try { boardEl.setPointerCapture(e.pointerId); } catch {} }
+
     boardEl.addEventListener('contextmenu', e => e.preventDefault());
     boardEl.addEventListener('pointerdown', e => {
       const el = e.target.closest('.sq');
@@ -556,12 +794,13 @@
       }
       if (e.button !== 0) return;
       if (shapes.length) { shapes = []; renderShapes(); }
+      // Clicking the board while looking back jumps to the live position, like lichess
+      if (view !== null) return setView(Infinity);
       if (!myTurn() && !preTurn()) return;
       const p = game.get(sq), mover = an ? game.turn() : state.side;
       if (p && p.color === mover) {
-        const wasSelected = selected === sq;
+        drag = { from: sq, x: e.clientX, y: e.clientY, moved: false, wasSelected: selected === sq };
         selected = sq;
-        drag = { from: sq, x: e.clientX, y: e.clientY, moved: false, wasSelected };
         capture(e);
         ghost.src = pieceSrc(p);
         placeGhost(e);
@@ -585,7 +824,7 @@
       placeGhost(e);
     });
     boardEl.addEventListener('pointerup', e => {
-      if (drawing) { const d = drawing; drawing = null; toggleShape(d); return renderShapes(); }
+      if (drawing) { toggleShape(drawing); drawing = null; return renderShapes(); }
       if (!drag) return;
       const d = drag; drag = null; ghost.style.display = 'none';
       const to = sqFromPoint(e.clientX, e.clientY);
@@ -596,24 +835,28 @@
     boardEl.addEventListener('pointercancel', () => { drag = null; drawing = null; ghost.style.display = 'none'; render(); });
 
     // ---- Controls ----
-    $('#hint').onclick = hint;
-    $('#next').onclick = newLine;
-    const nav = { first: () => 0, prev: () => an.ply - 1, next: () => an.ply + 1, last: () => an.moves.length };
-    for (const b of document.querySelectorAll('[data-nav]')) b.onclick = () => an && gotoPly(nav[b.dataset.nav]());
-    $('#moves').onclick = e => { const b = e.target.closest('[data-ply]'); if (an && b) gotoPly(+b.dataset.ply); };
-    // Arrow keys step through the analysis, as on lichess
+    // Back/forward: in analysis it moves the board; while training it only shows past positions
+    const NAV = { first: () => 0, prev: () => plyNow() - 1, next: () => plyNow() + 1, last: plyEnd };
     const KEYS = { ArrowLeft: 'prev', ArrowRight: 'next', ArrowUp: 'first', ArrowDown: 'last', Home: 'first', End: 'last' };
+    for (const b of document.querySelectorAll('[data-nav]')) b.onclick = () => goPly(NAV[b.dataset.nav]());
+    $('#moves').onclick = e => { const b = e.target.closest('[data-ply]'); if (b) goPly(+b.dataset.ply); };
     document.addEventListener('keydown', e => {
-      if (!an || !KEYS[e.key] || e.target.closest('input, textarea, select')) return;
+      if (!KEYS[e.key] || e.target.closest?.('input, textarea, select') || $('#addDlg').open) return;
       e.preventDefault();
-      gotoPly(nav[KEYS[e.key]]());
+      goPly(NAV[KEYS[e.key]]());
     });
+    $('#hint').onclick = hint;
+    $('#next').onclick = () => newLine();
+    $('#replay').onclick = () => newLine(true);
+    $('#notesBtn').onclick = () => { state.notes = !state.notes; save(); render(); };
     for (const b of document.querySelectorAll('#side button')) b.onclick = () => {
       state.side = b.dataset.side; save(); renderSide(); newLine();
     };
 
-    // ---- Import ----
+    // ---- Add an opening (lichess study link or PGN) ----
     function impMsg(text, bad) { const m = $('#impMsg'); m.textContent = text; m.className = bad ? 'bad' : ''; }
+    $('#addOpen').onclick = () => { impMsg(''); $('#addDlg').showModal(); $('#impText').focus(); };
+    $('#addClose').onclick = () => $('#addDlg').close();
     $('#impBtn').onclick = async () => {
       const raw = $('#impText').value.trim();
       if (!raw) return;
@@ -624,7 +867,7 @@
         impMsg('Fetching…');
         try {
           const r = await fetch(`https://lichess.org/api/study/${link[1]}${link[2] ? '/' + link[2] : ''}.pgn`);
-          if (!r.ok) throw new Error(r.status === 404 ? 'not found (is the study public?)' : 'error ' + r.status);
+          if (!r.ok) throw new Error(r.status === 404 ? 'not found (is the study public?)' : r.status === 403 ? 'the owner turned off downloads' : 'error ' + r.status);
           pgn = await r.text();
         } catch (err) {
           return impMsg(`Couldn't fetch: ${err.message}. Paste the PGN instead.`, true);
@@ -638,13 +881,11 @@
       $('#impText').value = ''; $('#impName').value = '';
       const n = res.chapters.length;
       impMsg(`Added ${name}: ${n} chapter${n > 1 ? 's' : ''}${res.errors.length ? `, ${res.errors.length} bad move(s) skipped` : ''}`);
+      if (!res.errors.length) $('#addDlg').close();
       newLine();
     };
-
-    // Track who moved first so the move list numbers correctly from custom start positions
-    const origLoad = game.load.bind(game);
-    game.load = fen => { startTurn = fen.split(' ')[1]; return origLoad(fen); };
 
     loadOpenings(); renderList(); renderSide(); newLine();
   </script>
 </body>
+</html>
