@@ -136,11 +136,9 @@
     .s-angle .shadow { position: absolute; left: 50%; top: 84%; width: 110px; height: 14px; margin-left: -55px; border-radius: 50%; background: radial-gradient(rgba(0,0,0,0.7), transparent 70%); animation: squish 5s ease-in-out infinite alternate; }
     @keyframes orbit { from { transform: rotateX(16deg) rotateY(-42deg); } to { transform: rotateX(10deg) rotateY(42deg); } }
     @keyframes squish { 50% { transform: scaleX(0.75); } }
-    /* Quip Brawl: a pixel runner flips gravity between floor and ceiling while the glyph wall creeps after it */
-    .s-quip .runner { transform-box: fill-box; transform-origin: center; animation: gflip 2.8s cubic-bezier(0.5, 0, 0.4, 1) infinite; }
-    .s-quip .wall { animation: creep 2.8s ease-in-out infinite; }
-    @keyframes gflip { 0%, 30% { transform: none; } 45%, 80% { transform: translateY(-38px) scaleY(-1); } 95%, 100% { transform: none; } }
-    @keyframes creep { 0%, 100% { transform: none; } 50% { transform: translateX(10px); } }
+    /* Quip Brawl: a white answer card slides onto the black prompt card */
+    .s-quip .answer { animation: deal 2.8s cubic-bezier(0.3, 0, 0.2, 1) infinite; }
+    @keyframes deal { 0%, 20% { transform: translate(40px, 20px) rotate(10deg); opacity: 0; } 45%, 85% { transform: none; opacity: 1; } 100% { transform: none; opacity: 0; } }
     /* Fruit Butcher: the knife slashes, the apple splits and turns out to have a heart */
     .s-fruit .knife { opacity: 0; animation: slash 3.2s cubic-bezier(0.7, 0, 0.3, 1) infinite; }
     .s-fruit .lhalf { transform-origin: 100% 100%; animation: split-l 3.2s ease-out infinite; }
@@ -309,25 +307,16 @@
         <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
         <div class="art" aria-hidden="true">
           <svg class="s-quip" viewBox="0 0 320 132" preserveAspectRatio="xMidYMax meet">
-            <!-- ceiling and floor bars, the running faces glowing orange -->
-            <g fill="#c4121f"><rect x="132" y="18" width="10" height="10"/><rect x="144" y="18" width="10" height="10"/><rect x="156" y="18" width="10" height="10"/><rect x="168" y="18" width="10" height="10"/><rect x="180" y="18" width="10" height="10"/><rect x="192" y="18" width="10" height="10"/><rect x="204" y="18" width="10" height="10"/><rect x="216" y="18" width="10" height="10"/><rect x="228" y="18" width="10" height="10"/><rect x="240" y="18" width="10" height="10"/><rect x="252" y="18" width="10" height="10"/><rect x="264" y="18" width="10" height="10"/></g>
-            <rect x="132" y="28" width="142" height="2" fill="#ff7a2e"/>
-            <g fill="#c4121f"><rect x="60" y="106" width="10" height="10"/><rect x="72" y="106" width="10" height="10"/><rect x="84" y="106" width="10" height="10"/><rect x="96" y="106" width="10" height="10"/><rect x="108" y="106" width="10" height="10"/><rect x="120" y="106" width="10" height="10"/><rect x="132" y="106" width="10" height="10"/><rect x="144" y="106" width="10" height="10"/><rect x="156" y="106" width="10" height="10"/><rect x="168" y="106" width="10" height="10"/><rect x="180" y="106" width="10" height="10"/></g>
-            <rect x="60" y="104" width="130" height="2" fill="#ff7a2e"/>
-            <!-- the pursuer: a wall of blood-red squares with ember eyes -->
-            <g class="wall">
-              <g fill="#6d0207"><rect x="0" y="0" width="34" height="132"/></g>
-              <g fill="#c4121f"><rect x="34" y="8" width="8" height="8"/><rect x="34" y="30" width="8" height="8"/><rect x="42" y="40" width="6" height="6"/><rect x="34" y="62" width="8" height="8"/><rect x="34" y="88" width="8" height="8"/><rect x="42" y="98" width="6" height="6"/><rect x="34" y="118" width="8" height="8"/></g>
-              <g fill="#ff7a2e"><rect x="18" y="56" width="5" height="5"/><rect x="27" y="56" width="5" height="5"/></g>
-            </g>
-            <!-- the runner, 8x12 pixels -->
-            <g class="runner" fill="#ff5d8f">
-              <rect x="154" y="68" width="12" height="12"/><rect x="157" y="77" width="6" height="3"/><rect x="151" y="83" width="18" height="6"/><rect x="154" y="89" width="12" height="6"/><rect x="157" y="95" width="6" height="6"/><rect x="157" y="101" width="9" height="3"/>
-              <rect x="157" y="74" width="3" height="3" fill="#050506"/><rect x="163" y="74" width="3" height="3" fill="#050506"/>
+            <!-- a black prompt card with a white answer card dealt onto it -->
+            <rect x="96" y="14" width="76" height="106" rx="6" fill="#140808" stroke="#806460" stroke-width="2"/>
+            <rect x="106" y="30" width="50" height="5" fill="#f3e9e4"/><rect x="106" y="42" width="34" height="5" fill="#f3e9e4"/><rect x="106" y="54" width="22" height="3" fill="#c4121f"/>
+            <g class="answer">
+              <rect x="148" y="24" width="76" height="106" rx="6" fill="#f3e9e4"/>
+              <rect x="158" y="40" width="46" height="5" fill="#140808"/><rect x="158" y="52" width="30" height="5" fill="#140808"/>
             </g>
           </svg>
         </div>
-        <h2><md-icon aria-hidden="true">swap_vert</md-icon>Quip Brawl</h2>
+        <h2><md-icon aria-hidden="true">style</md-icon>Quip Brawl</h2>
       </a>
       <a class="card" href="statue-poop-defender/" data-tab="games">
         <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
@@ -408,6 +397,22 @@
           </svg>
         </div>
         <h2><md-icon aria-hidden="true">menu_book</md-icon>Capablanca Book</h2>
+      </a>
+      <a class="card" href="trap-trainer/index.html" data-tab="tools">
+        <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
+        <div class="art" aria-hidden="true">
+          <svg class="s-trap" viewBox="0 0 320 132" preserveAspectRatio="xMidYMax meet">
+            <!-- a pixel bear trap waiting on the board for a king -->
+            <defs><pattern id="chk-trap" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#1c0b0b"/><rect width="14" height="14" fill="#341818"/><rect x="14" y="14" width="14" height="14" fill="#341818"/></pattern></defs>
+            <rect y="104" width="320" height="28" fill="url(#chk-trap)"/>
+            <rect x="104" y="100" width="112" height="8" fill="#806460"/>
+            <g fill="#b49c96"><rect x="108" y="92" width="8" height="8"/><rect x="124" y="92" width="8" height="8"/><rect x="140" y="92" width="8" height="8"/><rect x="172" y="92" width="8" height="8"/><rect x="188" y="92" width="8" height="8"/><rect x="204" y="92" width="8" height="8"/></g>
+            <rect x="152" y="92" width="16" height="8" fill="#c4121f"/>
+            <text x="160" y="76" text-anchor="middle" font-size="44" fill="#f3e9e4" font-family="'Segoe UI Symbol', 'Noto Sans Symbols 2', 'DejaVu Sans', serif">♚</text>
+            <text x="232" y="56" fill="#ff7a2e" font-family="Creepster, Impact" font-size="26">#</text>
+          </svg>
+        </div>
+        <h2><md-icon aria-hidden="true">phishing</md-icon>Trap Trainer</h2>
       </a>
     </div>
   </main>
