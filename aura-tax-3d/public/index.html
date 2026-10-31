@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aura Tax 3D</title>
+  <meta name="description" content="Champ smurf camel riders. T-bag people, steal their aura, and make them pay to duo q with you. 2-8 players.">
+  <meta name="theme-color" content="#16141c">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23f5b942'/><text x='50' y='70' font-size='60' font-family='sans-serif' font-weight='700' text-anchor='middle' fill='%2316141c'>A</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rubik:wght@800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- BACKDROP: a bot match on the board behind home and lobby (attract.js) -->
+  <div id="backdrop" class="backdrop" aria-hidden="true"></div>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen active">
+    <div class="home">
+      <h1 class="logo">
+        <span class="sr">Aura Tax 3D</span>
+        <span class="logo-wrap" aria-hidden="true"><canvas id="logo"></canvas><span class="logo-3d">3D</span></span>
+      </h1>
+      <p class="tagline">Steal aura. Make people pay to duo q with you.</p>
+      <div class="panel glass">
+        <label class="field">
+          <span>Your name</span>
+          <input id="name" maxlength="16" placeholder="xX_CamelSmurf_Xx" autocomplete="off">
+        </label>
+        <button id="btn-enter" class="btn primary block">Join</button>
+        <p id="home-err" class="err" role="alert"></p>
+      </div>
+      <p class="home-foot">2–8 players · one lobby · bring your camel</p>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="screen-lobby" class="screen">
+    <div class="panel glass lobby">
+      <div class="row-between">
+        <h2>Lobby <span id="lobby-count" class="muted"></span></h2>
+        <button id="btn-leave-lobby" class="icon-btn" type="button" title="Leave" aria-label="Leave"><span class="ms">close</span></button>
+      </div>
+      <ul id="lobby-players" class="lobby-players"></ul>
+      <p id="lobby-specs" class="muted small-text"></p>
+      <h3>Colour</h3>
+      <div id="color-picker" class="color-picker"></div>
+      <h3>Champion <span id="champ-name" class="champ-name"></span></h3>
+      <div id="champ-picker" class="champ-picker"></div>
+      <div id="champ-zoom" class="champ-zoom hidden" aria-hidden="true">
+        <canvas id="champ-zoom-canvas"></canvas>
+        <div class="cz-name" id="champ-zoom-name"></div>
+        <div class="cz-blurb" id="champ-zoom-blurb"></div>
+      </div>
+      <h3>Dice <span id="dice-name" class="champ-name"></span></h3>
+      <div id="dice-picker" class="dice-picker"></div>
+      <div class="settings">
+        <label class="field"><span>Aura to win</span><select id="set-target"></select></label>
+        <label class="field"><span>Rounds</span><select id="set-rounds"></select></label>
+      </div>
+      <button id="btn-start" class="btn primary block">Start game</button>
+      <p id="lobby-wait" class="muted center small-text"></p>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div id="stage" class="stage"></div>
+    <div id="now-playing" class="now-playing panel hidden" aria-label="Music">
+      <div class="np-art" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="np-main">
+        <div id="np-title" class="np-title"></div>
+        <div id="np-bar" class="np-bar" role="presentation"><i id="np-fill"></i></div>
+        <div id="np-time" class="np-time"></div>
+      </div>
+      <button id="np-play" class="icon-btn" type="button" aria-label="Pause music"><span class="ms">pause</span></button>
+      <button id="np-mute" class="icon-btn" type="button" aria-label="Mute music"><span class="ms">volume_up</span></button>
+    </div>
+    <aside class="side">
+      <div class="panel players-panel">
+        <div class="row-between">
+          <h3>Players</h3>
+          <div class="head-btns">
+            <button id="btn-end-game" class="icon-btn" type="button" title="End game" aria-label="End game"><span class="ms">flag</span></button>
+            <button id="btn-leave-game" class="icon-btn" title="Leave"><span class="ms">logout</span></button>
+          </div>
+        </div>
+        <div id="players" class="players"></div>
+      </div>
+      <div id="action-panel" class="action-panel panel">
+        <ol id="steps" class="steps" aria-label="Turn steps">
+          <li data-step="draw"><span class="ms">style</span>1 · Draw</li>
+          <li data-step="roll"><span class="ms">casino</span>2 · Roll</li>
+          <li data-step="play"><span class="ms">playing_cards</span>3 · Play or end</li>
+        </ol>
+        <div id="waiting" class="waiting"></div>
+        <div id="draw-btns" class="draw-btns hidden">
+          <button id="deck-guard" class="btn deck-btn k-guard" type="button" data-deck="guard"><span class="ms">shield</span>Guard <i id="count-guard"></i></button>
+          <button id="deck-attack" class="btn deck-btn k-attack" type="button" data-deck="attack"><span class="ms">bolt</span>Attack <i id="count-attack"></i></button>
+        </div>
+        <div id="choose" class="choose hidden">
+          <div id="choose-title" class="choose-title"></div>
+          <div id="choose-text" class="choose-text"></div>
+          <div id="choose-list" class="choose-list"></div>
+        </div>
+        <div id="turn-btns" class="turn-btns">
+          <button id="btn-roll" class="btn"><span class="ms">casino</span>Roll</button>
+          <button id="btn-play" class="btn"><span class="ms">playing_cards</span>Play card</button>
+          <button id="btn-end" class="btn"><span class="ms">skip_next</span>End turn</button>
+        </div>
+      </div>
+    </aside>
+    <div id="hud-bottom" class="hud-bottom">
+      <div id="hand-wrap" class="hand-dock">
+        <div class="hand-meta"><span id="hand-hint" class="hand-hint"></span></div>
+        <div id="hand" class="hand"></div>
+      </div>
+    </div>
+    <div id="card-pop" class="card-pop hidden"></div>
+    <div id="stickers" class="stickers hidden">
+      <div class="stickers-panel panel hidden" id="sticker-panel">
+        <div class="row-between">
+          <h3>Stickers</h3>
+          <button id="btn-mute" class="icon-btn" type="button" title="Sound on"><span class="ms">volume_up</span></button>
+        </div>
+        <div id="sticker-grid" class="sticker-grid"></div>
+        <div id="gif-picker" class="gif-picker hidden">
+          <div class="gif-head">
+            <button id="gif-back" class="icon-btn" type="button" aria-label="Back to stickers"><span class="ms">arrow_back</span></button>
+            <input id="gif-q" type="search" placeholder="Search GIFs" autocomplete="off" maxlength="80">
+          </div>
+          <div id="gif-results" class="gif-results"></div>
+          <p id="gif-note" class="gif-note"></p>
+          <form id="gif-link" class="gif-link">
+            <input id="gif-url" type="url" placeholder="…or paste a GIF link (Giphy, Tenor, Imgur, Discord)" autocomplete="off">
+            <button class="btn" type="submit">Send</button>
+          </form>
+        </div>
+        <div class="vol-rows">
+          <label class="vol-row" title="T-bag sounds"><span class="ms">campaign</span><span>Sounds</span><input id="vol-sfx" type="range" min="0" max="100" step="1"></label>
+          <label class="vol-row" title="Music while you play"><span class="ms">music_note</span><span>Music</span><input id="vol-music" type="range" min="0" max="100" step="1"></label>
+        </div>
+      </div>
+      <button id="btn-stickers" class="sticker-fab" type="button" title="Stickers" aria-label="Stickers"><span class="ms">add_reaction</span></button>
+    </div>
+    <div id="tip" class="tip hidden"></div>
+  </section>
+
+  <!-- OVERLAYS -->
+  <div id="banners" class="banners" aria-live="polite"></div>
+
+  <div id="react-bar" class="react-bar hidden">
+    <div id="react-desc" class="react-desc"></div>
+    <div id="react-list" class="react-list"></div>
+    <div class="timer"><i id="react-timer"></i></div>
+  </div>
+
+  <div id="over" class="overlay hidden">
+    <div class="panel over-panel">
+      <span class="ms over-icon">emoji_events</span>
+      <div id="over-winner" class="over-winner"></div>
+      <p class="muted small-text">wins the game</p>
+      <ol id="over-ranks" class="over-ranks"></ol>
+      <div class="over-btns">
+        <button id="btn-again" class="btn primary">Back to lobby</button>
+        <button id="btn-view-board" class="btn">View board</button>
+        <button id="btn-leave-over" class="btn ghost">Leave</button>
+      </div>
+      <p id="over-wait" class="muted small-text"></p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
