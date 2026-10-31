@@ -595,3 +595,8 @@ input:focus, select:focus { border-color: var(--accent); }
 .dice-opt[data-style="bone"] img { border-radius: 16px; }
 .dice-opt[data-style="neon"] img { border-radius: 1px; box-shadow: 0 0 0 1px #3df5ff, 0 0 12px rgba(255, 61, 240, 0.55); }
 @media (prefers-reduced-motion: reduce) { .dice-opt:hover img { transform: none; } }
+
+/* Knocked out (below 0 aura): greyed out in the players list */
+.prow.out { opacity: 0.45; filter: grayscale(0.8); }
+.prow.out .paura { text-decoration: line-through; }
+.tag.tag-out { background: color-mix(in srgb, var(--bad) 25%, var(--surface)); color: var(--bad); text-transform: uppercase; }
