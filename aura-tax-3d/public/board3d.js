@@ -433,10 +433,12 @@ export function createMotes(n = 220) {
 }
 
 export function createBoard(stage, opts = {}) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Phones and tablets get a lighter shadow setup: same look from a normal distance, much cheaper to draw.
+  const light = matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 700;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, opts.maxDpr || 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = light ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   stage.append(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -448,7 +450,7 @@ export function createBoard(stage, opts = {}) {
   const sun = new THREE.DirectionalLight(0xffffff, 1.8);
   sun.position.set(-4, 10, 6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(light ? 1024 : 2048, light ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
   sun.shadow.bias = -0.0005;
   sun.shadow.radius = 4;
@@ -521,6 +523,15 @@ export function createBoard(stage, opts = {}) {
     if (lit != null && tiles[lit]) tiles[lit].userData.lift = 0;
     lit = i;
     if (lit != null && tiles[lit]) tiles[lit].userData.lift = 1;
+  }
+
+  // Tiles you can pick right now (a card that targets a tile): they pulse red and take clicks.
+  const tileTargets = new Set();
+  const EMIT_LIT = new THREE.Color(C.accent);
+  const EMIT_BAD = new THREE.Color(C.bad);
+  function setTileTargets(list) {
+    tileTargets.clear();
+    for (const i of list || []) tileTargets.add(i);
   }
 
   function setTax(map) {
@@ -721,13 +732,19 @@ export function createBoard(stage, opts = {}) {
     ring.position.y = 0.012;
     ring.visible = false;
     group.add(ring);
+    // Shown while you're picking a target: a red ring you can click (or tap) to pick this rider.
+    const tring = new THREE.Mesh(RING_GEO, new THREE.MeshBasicMaterial({ color: C.bad, transparent: true, opacity: 0.9, depthWrite: false }));
+    tring.rotation.x = -Math.PI / 2;
+    tring.position.y = 0.018;
+    tring.visible = false;
+    group.add(tring);
     const badgeTex = canvasTex(128, 128, () => {});
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex, depthWrite: false }));
     badge.scale.setScalar(0.24);
     group.add(badge);
     scene.add(group);
     const p = {
-      id, group, figure, ring, badge, badgeTex, model: null, height: 0.55,
+      id, group, figure, ring, tring, badge, badgeTex, model: null, height: 0.55,
       color: null, champion: null, letter: '?', lead: false, faded: null,
       target: null, hop: null, tbagUntil: 0, shakeUntil: 0, poofAt: 0, scale: 1,
       redrawBadge() { badgeTex.userData.redraw((g, w, h) => drawBadge(g, w, h, p.color, p.letter, p.lead)); },
@@ -757,10 +774,12 @@ export function createBoard(stage, opts = {}) {
       const p = pawns.get(x.id) || makePawn(x.id);
       if (p.color !== x.color || p.champion !== x.champion) {
         if (p.model) p.figure.remove(p.model);
-        p.model = buildChampion(x.champion, x.color);
-        p.height = p.model.userData.height;
-        p.figure.add(p.model);
+        const model = buildChampion(x.champion, x.color);
+        p.model = model;
+        p.height = model.userData.height;
+        p.figure.add(model);
         p.faded = null;
+        model.userData.ready.then(() => { if (p.model === model && p.faded) setFaded(p, true); });
       }
       if (p.color !== x.color || p.letter !== x.letter || p.lead !== x.lead) {
         p.color = x.color;
@@ -798,11 +817,21 @@ export function createBoard(stage, opts = {}) {
   const tbag = id => { const p = pawns.get(id); if (p) p.tbagUntil = now() + TBAG_MS; };
   const shake = id => { const p = pawns.get(id); if (p) p.shakeUntil = now() + 1100; };
 
+  // Riders you can pick right now (a card or prompt that targets a rider), and the one you're pointing at.
+  const targets = new Set();
+  let hot = null;
+  function setTargets(list) {
+    targets.clear();
+    for (const id of list || []) targets.add(id);
+    if (!targets.has(hot)) hot = null;
+  }
+  function setHot(id) { hot = id && targets.has(id) ? id : null; }
+
   // ---------------------------------------------------------------------------
   // Camera: orbit around the board; drag to turn, wheel to zoom, double-click to reset.
   // ---------------------------------------------------------------------------
   const cam = {
-    yaw: 0, pitch: 0.95, zoom: 1, fit: 14, pan: new THREE.Vector3(),
+    yaw: 0, pitch: 0.95, base: 0.95, zoom: 1, fit: 14, pan: new THREE.Vector3(),
     target: new THREE.Vector3(), cur: { yaw: 0, pitch: 0.95, dist: 14, target: new THREE.Vector3() },
     follow: null,
   };
@@ -822,8 +851,14 @@ export function createBoard(stage, opts = {}) {
 
   // Find the distance at which the whole board fits in the part of the screen the HUD leaves free.
   function fitDistance() {
+    // The slab's corners, plus head height over the outer tiles (where riders stand). A full-height box would waste
+    // a lot of room: its near top corners sit right in front of the camera and project much wider than the board.
     const corners = [];
-    for (const x of [-3.75, 3.75]) for (const z of [-3.75, 3.75]) for (const y of [-0.36, 0.9]) corners.push(new THREE.Vector3(x, y, z));
+    for (const x of [-1, 1]) {
+      for (const z of [-1, 1]) {
+        corners.push(new THREE.Vector3(x * 3.75, 0, z * 3.75), new THREE.Vector3(x * 3.75, -0.36, z * 3.75), new THREE.Vector3(x * 3.1, 0.85, z * 3.1));
+      }
+    }
     const pad = 14;
     const L = insets.left + pad;
     const R = W - insets.right - pad;
@@ -847,18 +882,36 @@ export function createBoard(stage, opts = {}) {
     return hi;
   }
 
+  // Where the projection centre sits (in px off the canvas centre) so the board lands in the space the HUD leaves free.
+  // It eases toward its target, so when the HUD grows or shrinks the board glides instead of jumping.
+  const view = { x: 0, y: 0, tx: 0, ty: 0, ready: false };
+  function setOffset(x, y) {
+    camera.setViewOffset(W, H, x, y, W, H);
+    camera.updateProjectionMatrix();
+  }
+
   function resize() {
     W = Math.max(1, stage.clientWidth);
     H = Math.max(1, stage.clientHeight);
     insets = opts.insets ? opts.insets() : insets;
+    // Tall screens (phones held upright) look down more steeply: the board fills more of the height and the tiles
+    // are less squashed. Only changes the angle if you haven't turned the camera yourself.
+    const base = !opts.director && (W - insets.left - insets.right) / Math.max(1, H - insets.top - insets.bottom) < 0.8 ? 1.2 : 0.95;
+    if (base !== cam.base) {
+      if (cam.pitch === cam.base) cam.pitch = base;
+      cam.base = base;
+    }
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
-    // Shift the projection centre into the free area so the board sits between the HUD panels.
     const cx = (insets.left + (W - insets.right)) / 2;
     const cy = (insets.top + (H - insets.bottom)) / 2;
-    camera.setViewOffset(W, H, W / 2 - cx, H / 2 - cy, W, H);
-    camera.updateProjectionMatrix();
+    view.tx = W / 2 - cx;
+    view.ty = H / 2 - cy;
+    // Fit with the projection the camera is heading to, then put back the one it's showing now.
+    setOffset(view.tx, view.ty);
     cam.fit = fitDistance();
+    if (!view.ready) { view.x = view.tx; view.y = view.ty; view.ready = true; }
+    setOffset(view.x, view.y);
   }
   new ResizeObserver(resize).observe(stage);
   for (const el of opts.watch || []) new ResizeObserver(resize).observe(el);
@@ -868,41 +921,85 @@ export function createBoard(stage, opts = {}) {
     cam.follow = id;
     if (id) cam.pan.set(0, 0, 0);
   }
+  function resetView() { cam.yaw = 0; cam.pitch = cam.base; cam.zoom = 1; cam.pan.set(0, 0, 0); }
 
   const el = renderer.domElement;
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let drag = null;
+  let pinch = null;
+  let lastTap = null;
+  const pointers = new Map(); // every finger (or the mouse) currently down on the board
 
-  function pick(e, objects) {
+  function aim(e) {
     const r = el.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
+  }
+  function pick(e, objects) {
+    aim(e);
     return ray.intersectObjects(objects, false)[0];
+  }
+  // The rider under the pointer, if any (only riders you can target count when a target is being picked).
+  function pickPawn(e, onlyTargets) {
+    aim(e);
+    let best = null;
+    for (const p of pawns.values()) {
+      if (onlyTargets && !targets.has(p.id)) continue;
+      const hit = ray.intersectObject(p.figure, true)[0] || ray.intersectObject(p.tring, false)[0];
+      if (hit && (!best || hit.distance < best.d)) best = { id: p.id, d: hit.distance };
+    }
+    return best ? best.id : null;
   }
   const deckCards = () => Object.values(decks).flatMap(d => d.cards.filter(c => c.visible));
 
+  // Slide along the table so the board follows the pointer.
+  function panFrom(from, dx, dy) {
+    const k = (2 * cam.cur.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / H;
+    const right = new THREE.Vector3(Math.cos(cam.cur.yaw), 0, -Math.sin(cam.cur.yaw));
+    const away = new THREE.Vector3(-Math.sin(cam.cur.yaw), 0, -Math.cos(cam.cur.yaw));
+    cam.pan.copy(from).addScaledVector(right, -dx * k).addScaledVector(away, (dy * k) / Math.sin(cam.cur.pitch));
+    cam.pan.clampLength(0, 5);
+  }
+  const startDrag = (id, x, y, o = {}) => {
+    drag = { id, x, y, yaw: cam.yaw, pitch: cam.pitch, moved: false, pan: false, from: cam.pan.clone(), button: 0, type: 'touch', ...o };
+  };
+
   el.addEventListener('pointerdown', e => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+    try { el.setPointerCapture(e.pointerId); } catch { /* already gone */ }
+    if (pointers.size === 2) {
+      // Two fingers: pinch to zoom, move together to slide the board. Cancels the one-finger turn.
+      const [a, b] = [...pointers.values()];
+      pinch = { d: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), zoom: cam.zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, from: cam.pan.clone() };
+      drag = null;
+      opts.onHover && opts.onHover(null);
+      return;
+    }
+    if (pointers.size > 2) return;
     const pan = e.button === 1 || e.button === 2;
     if (pan) e.preventDefault();
-    drag = { x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch, moved: false, pan, from: cam.pan.clone(), button: e.button };
-    el.setPointerCapture(e.pointerId);
+    startDrag(e.pointerId, e.clientX, e.clientY, { pan, button: e.button, type: e.pointerType });
   });
   // Stop the browser's middle-click autoscroll and the right-click menu on the board.
   el.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });
   el.addEventListener('contextmenu', e => e.preventDefault());
   el.addEventListener('pointermove', e => {
-    if (drag) {
+    const pt = pointers.get(e.pointerId);
+    if (pt) { pt.x = e.clientX; pt.y = e.clientY; }
+    if (pinch && pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.max(20, Math.hypot(a.x - b.x, a.y - b.y));
+      cam.zoom = THREE.MathUtils.clamp((pinch.zoom * pinch.d) / d, 0.45, 1.6);
+      panFrom(pinch.from, (a.x + b.x) / 2 - pinch.mx, (a.y + b.y) / 2 - pinch.my);
+      return;
+    }
+    if (drag && drag.id === e.pointerId) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
-      if (Math.hypot(dx, dy) > 5) drag.moved = true;
+      if (Math.hypot(dx, dy) > (drag.type === 'mouse' ? 5 : 9)) drag.moved = true;
       if (drag.moved && drag.pan) {
-        // Slide along the table: the board follows the mouse, faster when zoomed out.
-        const k = cam.cur.dist * 0.0011;
-        const right = new THREE.Vector3(Math.cos(cam.cur.yaw), 0, -Math.sin(cam.cur.yaw));
-        const away = new THREE.Vector3(-Math.sin(cam.cur.yaw), 0, -Math.cos(cam.cur.yaw));
-        cam.pan.copy(drag.from).addScaledVector(right, -dx * k).addScaledVector(away, dy * k / Math.sin(cam.cur.pitch));
-        cam.pan.clampLength(0, 5);
+        panFrom(drag.from, dx, dy);
         el.style.cursor = 'move';
         opts.onHover && opts.onHover(null);
         return;
@@ -915,27 +1012,69 @@ export function createBoard(stage, opts = {}) {
         return;
       }
     }
+    if (e.pointerType !== 'mouse') return; // hover tips are for a mouse; fingers tap instead
     const deckHit = pick(e, deckCards());
     const ready = deckHit && decks[deckHit.object.userData.deck].ready;
-    el.style.cursor = ready ? 'pointer' : 'grab';
-    const hit = deckHit ? null : pick(e, tiles);
-    opts.onHover && opts.onHover(hit ? { tile: hit.object.userData.info, x: e.clientX, y: e.clientY } : null);
+    const pawn = !ready && targets.size ? pickPawn(e, true) : null;
+    const tileHit = ready || pawn ? null : pick(e, tiles);
+    const tileTarget = tileHit && tileTargets.has(tileHit.object.userData.tile);
+    el.style.cursor = ready || pawn || tileTarget ? 'pointer' : 'grab';
+    if (pawn !== hot) { hot = pawn; opts.onPawnHover && opts.onPawnHover(pawn); }
+    opts.onHover && opts.onHover(tileHit ? { tile: tileHit.object.userData.info, x: e.clientX, y: e.clientY } : null);
   });
-  el.addEventListener('pointerup', e => {
-    const wasDrag = drag && drag.moved;
-    const left = drag && drag.button === 0;
+  function release(e) {
+    pointers.delete(e.pointerId);
+    if (pinch) {
+      if (pointers.size < 2) {
+        pinch = null;
+        // One finger is still down: keep turning from it, without a jump.
+        const rest = [...pointers.entries()][0];
+        if (rest) startDrag(rest[0], rest[1].x, rest[1].y, { moved: true, type: rest[1].type });
+      }
+      return;
+    }
+    if (!drag || drag.id !== e.pointerId) return;
+    const { moved, button, type } = drag;
     drag = null;
     el.style.cursor = 'grab';
-    if (wasDrag || !left) return;
-    const hit = pick(e, deckCards());
-    if (hit && decks[hit.object.userData.deck].ready && opts.onDeck) opts.onDeck(hit.object.userData.deck);
+    if (moved || button !== 0 || e.type === 'pointercancel') return;
+    tap(e, type);
+  }
+  // A click or tap that didn't turn the board: a deck, then a rider you're targeting, then a tile.
+  function tap(e, type) {
+    const deckHit = pick(e, deckCards());
+    if (deckHit && decks[deckHit.object.userData.deck].ready && opts.onDeck) { opts.onDeck(deckHit.object.userData.deck); return; }
+    if (targets.size) {
+      const pawn = pickPawn(e, true);
+      if (pawn && opts.onPawn) { opts.onPawn(pawn); return; }
+    }
+    const touch = type !== 'mouse';
+    if (touch) {
+      // Double tap puts the camera back where it started
+      const t = now();
+      if (lastTap && t - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 36) {
+        lastTap = null;
+        resetView();
+        opts.onTileTap && opts.onTileTap(null);
+        return;
+      }
+      lastTap = { t, x: e.clientX, y: e.clientY };
+    }
+    const hit = pick(e, tiles);
+    if (opts.onTileTap) opts.onTileTap(hit ? { tile: hit.object.userData.info, index: hit.object.userData.tile, x: e.clientX, y: e.clientY, touch } : null);
+  }
+  el.addEventListener('pointerup', release);
+  el.addEventListener('pointercancel', release);
+  el.addEventListener('pointerleave', e => {
+    if (e.pointerType !== 'mouse') return;
+    opts.onHover && opts.onHover(null);
+    if (hot) { hot = null; opts.onPawnHover && opts.onPawnHover(null); }
   });
-  el.addEventListener('pointerleave', () => opts.onHover && opts.onHover(null));
   el.addEventListener('wheel', e => {
     e.preventDefault();
     cam.zoom = THREE.MathUtils.clamp(cam.zoom * Math.exp(e.deltaY * 0.001), 0.45, 1.6);
   }, { passive: false });
-  el.addEventListener('dblclick', () => { cam.yaw = 0; cam.pitch = 0.95; cam.zoom = 1; cam.pan.set(0, 0, 0); });
+  el.addEventListener('dblclick', resetView);
 
   // Page coordinates of a pawn's head, for floating text.
   function screenPos(id, pos) {
@@ -957,6 +1096,13 @@ export function createBoard(stage, opts = {}) {
     last = t;
     const ease = k => 1 - Math.exp(-dt * k);
 
+    if (Math.abs(view.tx - view.x) > 0.25 || Math.abs(view.ty - view.y) > 0.25) {
+      const k = ease(7);
+      view.x += (view.tx - view.x) * k;
+      view.y += (view.ty - view.y) * k;
+      setOffset(view.x, view.y);
+    }
+
     // Camera eases toward where it wants to be; while a pawn moves it leans in on it.
     // A director (the home screen's bot match) can take the camera over instead.
     if (opts.director) {
@@ -964,8 +1110,10 @@ export function createBoard(stage, opts = {}) {
       camera.updateMatrixWorld();
     } else {
       const fp = cam.follow && pawns.get(cam.follow);
-      const wantTarget = fp ? fp.group.position.clone().multiplyScalar(0.55).setY(0) : cam.pan.clone();
-      const wantDist = cam.fit * cam.zoom * (fp ? 0.72 : 1);
+      // Tall screens lean in less: the board is already as wide as the screen, so a big zoom would crop it away.
+      const tall = cam.base > 1;
+      const wantTarget = fp ? fp.group.position.clone().multiplyScalar(tall ? 0.25 : 0.55).setY(0) : cam.pan.clone();
+      const wantDist = cam.fit * cam.zoom * (fp ? (tall ? 0.9 : 0.72) : 1);
       const c = cam.cur;
       c.yaw += (cam.yaw - c.yaw) * ease(10);
       c.pitch += (cam.pitch - c.pitch) * ease(10);
@@ -974,12 +1122,15 @@ export function createBoard(stage, opts = {}) {
       applyCamera(c.yaw, c.pitch, c.dist, c.target);
     }
 
-    // Tiles: the current rider's tile rises and glows.
+    // Tiles: the current rider's tile rises and glows; tiles you can pick pulse red.
+    const pulse = 0.5 + 0.5 * Math.sin(t / 220);
     for (const m of tiles) {
       const u = m.userData;
-      const want = u.lift ? 0.06 + Math.sin(t / 300) * 0.015 : 0;
+      const tgt = tileTargets.has(u.tile);
+      const want = u.lift ? 0.06 + Math.sin(t / 300) * 0.015 : tgt ? 0.03 + pulse * 0.03 : 0;
       m.position.y += (u.baseY + want - m.position.y) * ease(10);
-      u.top.emissiveIntensity += ((u.lift ? 0.22 : 0) - u.top.emissiveIntensity) * ease(8);
+      u.top.emissive.copy(tgt ? EMIT_BAD : EMIT_LIT);
+      u.top.emissiveIntensity += ((tgt ? 0.12 + pulse * 0.25 : u.lift ? 0.22 : 0) - u.top.emissiveIntensity) * ease(8);
     }
 
     // Decks bob and glow when you can draw from them.
@@ -1075,6 +1226,12 @@ export function createBoard(stage, opts = {}) {
       p.figure.position.x = t < p.shakeUntil ? Math.sin(t / 14) * 0.06 : 0;
       p.badge.position.y = (p.height + 0.16) * sy + lift;
       if (p.ring.visible) p.ring.scale.setScalar(1 + Math.sin(t / 250) * 0.08);
+      p.tring.visible = targets.has(p.id);
+      if (p.tring.visible) {
+        const big = p.id === hot;
+        p.tring.scale.setScalar((big ? 1.45 : 1.18) + pulse * (big ? 0.12 : 0.08));
+        p.tring.material.opacity = big ? 1 : 0.55 + pulse * 0.35;
+      }
     }
 
     renderer.render(scene, camera);
@@ -1097,6 +1254,7 @@ export function createBoard(stage, opts = {}) {
 
   return {
     build, setLit, setTax, setDeck, roll, setPlayers, place, hop, poof, tbag, shake, follow, screenPos, resize,
-    setRunning, pawnPos, fit: () => cam.fit, scene, canvas: el,
+    setRunning, pawnPos, fit: () => cam.fit, scene, canvas: el, resetView, setTargets, setHot, setTileTargets,
+    inspect: () => ({ W, H, insets, fit: cam.fit, zoom: cam.zoom, dist: cam.cur.dist, view: { ...view }, pitch: cam.cur.pitch }),
   };
 }
