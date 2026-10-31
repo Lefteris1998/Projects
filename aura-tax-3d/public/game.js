@@ -208,6 +208,11 @@ socket.on('state', s => {
   closeZoom();
   showScreen('game');
   renderGame();
+  const meNow = player(myId);
+  const meBefore = prev && prev.players.find(p => p.id === myId);
+  if (s.phase === 'play' && meNow && meNow.out && meBefore && !meBefore.out) {
+    showBanner({ title: "You're out", sub: 'Your aura went negative. You can keep watching the game.', kind: 'bad', pid: myId });
+  }
   if (s.phase === 'play' && s.currentId === myId && prev && prev.currentId !== myId) {
     showBanner({ title: 'Your turn', sub: 'Draw, roll, play a card, end your turn', kind: 'turn', pid: myId });
   }
@@ -390,7 +395,7 @@ function renderTokens() {
   const lead = leaderId();
   board3d.setPlayers(S.players.map(p => ({
     id: p.id, color: p.color, champion: p.champion, letter: initial(p.name), lead: p.id === lead,
-    current: p.id === S.currentId, faded: !p.connected || p.smurf,
+    current: p.id === S.currentId, faded: !p.connected || p.smurf || p.out,
   })));
   const groups = {};
   for (const p of S.players) {
@@ -630,8 +635,9 @@ const powerDot = n => (n ? h('span', { class: `pw pw-${n}`, 'data-tip': `Power $
 function renderHand() {
   const wrap = $('#hand-wrap');
   const isRider = !!player(myId);
-  wrap.classList.toggle('hidden', !isRider || S.phase !== 'play');
-  if (!isRider) return;
+  const out = isRider && player(myId).out; // knocked out: just watching now
+  wrap.classList.toggle('hidden', !isRider || out || S.phase !== 'play');
+  if (!isRider || out) return;
   const cards = hand();
   const ok = canPlayCard();
   const n = owed().length;
@@ -711,15 +717,16 @@ function renderPlayers() {
   box.replaceChildren();
   const lead = leaderId();
   for (const p of S.players) {
-    box.append(h('div', { class: `prow${p.id === S.currentId ? ' current' : ''}${p.connected ? '' : ' afk'}` },
+    box.append(h('div', { class: `prow${p.id === S.currentId ? ' current' : ''}${p.connected ? '' : ' afk'}${p.out ? ' out' : ''}` },
       avatar(p),
       h('div', { class: 'pinfo' },
         h('div', { class: 'pname' },
           h('span', { class: 'n' }, p.name),
           p.id === lead ? h('span', { class: 'ms', 'data-tip-title': 'Leader', 'data-tip': 'Has the most aura right now.' }, 'workspace_premium') : null,
           p.id === myId ? h('span', { class: 'tag' }, 'you') : null,
-          p.bot ? h('span', { class: 'tag' }, 'bot') : null),
-        h('div', { class: 'pstat' }, statusOf(p))),
+          p.bot ? h('span', { class: 'tag' }, 'bot') : null,
+          p.out ? h('span', { class: 'tag tag-out', 'data-tip': 'Went below 0 aura. Out of the game, watching.' }, 'out') : null),
+        h('div', { class: 'pstat' }, p.out ? null : statusOf(p))),
       h('div', { class: `paura${p.aura < 0 ? ' neg' : ''}` }, String(p.aura))));
   }
   if (S.spectators.length) {
