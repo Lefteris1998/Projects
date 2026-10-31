@@ -2,7 +2,7 @@
 
 An online board game for 2–8 players about champ smurf camel riders.
 Ride around the desert, T-bag people to steal their aura, and once you've stolen enough, put them under **aura tax** so they have to pay you to duo q.
-Just watch out for the booster on the enemy team, because getting destroyed in front of your duo puts you straight into **aura debt** and the **Deathnote**.
+Just watch out for the booster on the enemy team, because getting destroyed in front of your duo puts you straight into the **Deathnote**, and if your aura goes below 0 you are out.
 
 Things are not looking good for you lil bro.
 
@@ -19,8 +19,8 @@ There is one lobby. Everyone who opens the site lands in it, anyone can change t
 - **T-bag**: land on another rider to steal 15 aura from them.
 - **Aura Tax**: steal 40 aura in total from the same rider and they pay you 6 aura at the start of each of their turns, until they steal from you or play Betrayal.
 - **Board**: Patch Notes give you 2 draws, the Card Shop sells cards (15 from either deck, a legendary for 40), the Oasis gives a draw from the Guard deck, Osoka's Server Deathnotes you and makes you discard a random card, and Camel Zoomies gives +1 action and another roll. Booster Ambush, Ranked 1v1, Sandstorm and the Tax Office work as before.
-- Going below 0 aura puts you in **aura debt**.
-- The first rider to reach the target aura wins (default 150). If nobody does, the richest rider after the last round wins (default 10 rounds).
+- Going below 0 aura knocks you **out**: you lose your cards and turns and can only watch. If only one rider is left, they win.
+- Otherwise the first rider to reach the target aura wins (default 150). If nobody does, the richest rider still in after the last round wins (default 10 rounds).
 
 Disconnected riders go on camel autopilot (they roll and end their turn). Reopening the site in the same browser hands control back to them.
 

@@ -180,7 +180,8 @@ const now = () => Date.now();
 const human = p => p.connected && !p.bot;
 const byId = (room, id) => (id ? room.players.find(p => p.id === id) : null);
 const cur = room => room.players[room.turn];
-const others = (room, p) => room.players.filter(o => o !== p);
+const others = (room, p) => room.players.filter(o => o !== p && !o.out);
+const inGame = room => room.players.filter(p => !p.out);
 const hostagesOf = (room, p) => room.players.filter(o => o.owner === p.id);
 const alive = (room, gen) => room.gen === gen && room.phase === 'play';
 const ids = list => list.map(o => o.id);
@@ -552,7 +553,7 @@ function cardView(room, p, c) {
 // ---------------------------------------------------------------------------
 function resetPlayer(p) {
   Object.assign(p, {
-    pos: 0, aura: START_AURA, owner: null, deathnote: 0, debt: false, hand: [], draws: [],
+    pos: 0, aura: START_AURA, owner: null, deathnote: 0, out: false, hand: [], draws: [],
     duoWith: null, duoTurns: 0, marked: false, smurf: false, hurtTurn: -99, hunted: 0, coverId: null, coverTurns: 0,
     stats: { tbags: 0, stolen: 0, taxed: 0, cards: 0 },
   });
@@ -647,7 +648,7 @@ function publicState(room) {
     taxTiles: room.taxTiles,
     players: room.players.map(p => ({
       id: p.id, name: p.name, color: p.color, champion: p.champion, pos: p.pos, aura: p.aura, owner: p.owner,
-      deathnote: p.deathnote, connected: p.connected, bot: !!p.bot, dice: p.dice, stats: p.stats,
+      deathnote: p.deathnote, connected: p.connected, bot: !!p.bot, out: !!p.out, dice: p.dice, stats: p.stats,
       handCount: p.hand.length, draws: p.draws.length, duoWith: p.duoWith, marked: p.marked, smurf: p.smurf,
       booster: room.boosterId === p.id, hunted: p.hunted > 0, coverId: p.coverTurns > 0 ? p.coverId : null,
     })),
@@ -710,14 +711,41 @@ function adj(room, p, delta) {
   p.aura += delta;
   if (delta < 0) p.hurtTurn = room.turnCount;
   fx(room, { type: 'float', pid: p.id, text: (delta > 0 ? '+' : '') + delta, good: delta > 0 });
-  const inDebt = p.aura < 0;
-  if (inDebt && !p.debt) {
-    log(room, `${p.name} is now in AURA DEBT. Things are not looking good for you lil bro.`, 'bad');
-    banner(room, 'AURA DEBT', `${p.name}, things are not looking good for you lil bro`, 'bad', p.id);
-  } else if (!inDebt && p.debt) {
-    log(room, `${p.name} climbed out of aura debt.`, 'good');
+  if (p.aura < 0 && !p.out) eliminate(room, p);
+}
+
+// Below 0 aura you're out: you stay at the table as a spectator. Every link to you is cut (duos, taxes,
+// the booster, tax counters) and your cards go back to the discard pile. checkWin ends the game when one is left.
+function eliminate(room, p) {
+  p.out = true;
+  log(room, `${p.name} went negative and is OUT. Spectating from the dunes now.`, 'bad');
+  banner(room, 'ELIMINATED', `${p.name} has negative aura and is out of the game`, 'bad', p.id);
+  discard(room, ...p.hand);
+  p.hand = [];
+  p.draws = [];
+  p.owner = null;
+  p.marked = false;
+  p.smurf = false;
+  p.hunted = 0;
+  p.deathnote = 0;
+  endDuo(room, p);
+  p.coverTurns = 0;
+  for (const o of room.players) {
+    if (o.duoWith === p.id) endDuo(room, o);
+    if (o.owner === p.id) o.owner = null;
+    if (o.coverId === p.id) o.coverTurns = 0;
   }
-  p.debt = inDebt;
+  if (room.boosterId === p.id) room.boosterId = null;
+  for (const tile of Object.keys(room.taxTiles)) {
+    room.taxTiles[tile] = room.taxTiles[tile].filter(id => id !== p.id);
+    if (!room.taxTiles[tile].length) delete room.taxTiles[tile];
+  }
+  if (room.reaction && room.reaction.ask[p.id]) room.reaction.respond(p.id, null);
+  if (room.vote && room.vote.voters.includes(p.id)) {
+    room.vote.voters = room.vote.voters.filter(id => id !== p.id);
+    checkVoteDone(room);
+  }
+  if (room.pending && room.pending.pid === p.id && room.choiceFallback) room.choiceFallback();
 }
 
 // Screenshot marks a rider: the next attack on them hits double.
@@ -816,7 +844,7 @@ async function betray(room, p, t) {
 function reactionWindow(room, { actor, target, card, tbag }) {
   const ask = {};
   for (const o of room.players) {
-    if (o === actor || !human(o)) continue;
+    if (o === actor || !human(o) || o.out) continue;
     const allowed = new Set();
     if (o === target) {
       allowed.add('smurf');
@@ -957,6 +985,10 @@ async function startTurn(room, gen) {
     p.owner = null;
   }
   if (checkWin(room)) return;
+  if (p.out) {
+    room.busy = false;
+    return endTurn(room, p.id, gen);
+  }
 
   grantDraws(room, p, 1);
   room.busy = false;
@@ -1035,6 +1067,7 @@ async function runAction(room, pid, gen, fn) {
   await fn(p);
   if (!alive(room, gen) || checkWin(room)) return;
   room.busy = false;
+  if (p.out) return endTurn(room, p.id, gen);
   armTurnTimer(room);
   broadcast(room);
 }
@@ -1093,16 +1126,19 @@ async function mulligan(room, p, cards) {
 }
 
 function nextTurn(room, gen) {
-  room.turn = (room.turn + 1) % room.players.length;
-  if (room.turn === 0) {
-    room.round++;
-    if (room.round > room.settings.rounds) {
-      const leader = [...room.players].sort((a, b) => b.aura - a.aura)[0];
-      log(room, `The final round is over.`);
-      return endGame(room, leader);
+  if (checkWin(room)) return;
+  do {
+    room.turn = (room.turn + 1) % room.players.length;
+    if (room.turn === 0) {
+      room.round++;
+      if (room.round > room.settings.rounds) {
+        const leader = inGame(room).sort((a, b) => b.aura - a.aura)[0];
+        log(room, `The final round is over.`);
+        return endGame(room, leader);
+      }
+      log(room, `— Round ${room.round} —`, 'round');
     }
-    log(room, `— Round ${room.round} —`, 'round');
-  }
+  } while (cur(room).out);
   startTurn(room, gen);
 }
 
@@ -1149,7 +1185,7 @@ async function afterMove(room, p, gen) {
 }
 
 async function resolveLanding(room, p, depth, gen) {
-  for (const v of room.players.filter(o => o !== p && o.pos === p.pos && !duoLinked(p, o))) {
+  for (const v of room.players.filter(o => o !== p && !o.out && o.pos === p.pos && !duoLinked(p, o))) {
     await tbag(room, p, v, gen);
     if (!alive(room, gen)) return;
   }
@@ -1310,7 +1346,7 @@ async function snitch(room, p, t, gen) {
 }
 
 async function serverVote(room, gen) {
-  const voters = ids(room.players.filter(human));
+  const voters = ids(room.players.filter(o => human(o) && !o.out));
   banner(room, 'SERVER VOTE', 'Vote who gets sent to the Booster Ambush');
   log(room, 'SERVER VOTE. Everyone votes who gets sent to the Booster Ambush.', 'card');
   await new Promise(resolve => {
@@ -1325,7 +1361,7 @@ async function serverVote(room, gen) {
   const tally = {};
   for (const id of Object.values(votes)) tally[id] = (tally[id] || 0) + 1;
   const top = Math.max(0, ...Object.values(tally));
-  const leaders = top ? Object.keys(tally).filter(id => tally[id] === top) : ids(room.players);
+  const leaders = top ? Object.keys(tally).filter(id => tally[id] === top) : ids(inGame(room));
   const v = byId(room, leaders[rand(leaders.length)]);
   if (!v) return;
   log(room, `The server voted ${v.name}${top ? ` (${top} vote${top > 1 ? 's' : ''})` : ' (nobody voted, so it was random)'}. Off to the Booster Ambush.`, 'bad');
@@ -1411,7 +1447,15 @@ async function arena(room, p, gen) {
 }
 
 function checkWin(room) {
-  const w = room.players
+  if (room.phase !== 'play') return false;
+  const left = inGame(room);
+  if (left.length <= 1) {
+    const w = left[0] || [...room.players].sort((a, b) => b.aura - a.aura)[0];
+    log(room, `Everyone else is out. ${w.name} is the last rider standing.`, 'win');
+    endGame(room, w);
+    return true;
+  }
+  const w = left
     .filter(p => p.aura >= room.settings.target)
     .sort((a, b) => b.aura - a.aura)[0];
   if (!w) return false;
@@ -1665,7 +1709,7 @@ io.on('connection', socket => {
   socket.on('vote', id => {
     const v = room.vote;
     if (!isRider() || !v || !v.voters.includes(me.id) || v.votes[me.id]) return;
-    if (id === me.id || !byId(room, id)) return;
+    if (id === me.id || !byId(room, id) || byId(room, id).out) return;
     v.votes[me.id] = id;
     broadcast(room);
     checkVoteDone(room);
@@ -1675,7 +1719,7 @@ io.on('connection', socket => {
   socket.on('endgame', () => {
     if (!isRider() || room.phase !== 'play') return;
     room.gen++; // stops a turn that is still running
-    const winner = [...room.players].sort((a, b) => b.aura - a.aura)[0];
+    const winner = (inGame(room).length ? inGame(room) : [...room.players]).sort((a, b) => b.aura - a.aura)[0];
     banner(room, 'Game ended', `${me.name} ended the game`, 'info', me.id);
     endGame(room, winner);
   });
@@ -1737,6 +1781,8 @@ io.on('connection', socket => {
     }
     broadcast(room);
     reply(cb, { ok: true });
+    // A cheat can knock someone out: end the game if one rider is left, or pass the turn if it was theirs.
+    if (!checkWin(room) && cur(room).out && !room.busy && !room.pending && !room.reaction && !room.vote) endTurn(room, cur(room).id, room.gen);
   });
 
   socket.on('disconnect', () => {
