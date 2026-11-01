@@ -485,44 +485,94 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .k-boost { --k: var(--good); }
 .k-guard { --k: var(--blue); }
 .k-attack { --k: var(--bad); }
-.hcard, .bigcard, .ghost-card { --tint: color-mix(in srgb, var(--k) 30%, #4a4458); }
 
-/* A card's face, shared by the hand, the phone card sheet and the cards flying out of your hand */
+/* A card's face, shared by the hand, the phone card sheet, the played-card pop-up and the cards flying out of your hand.
+   Top to bottom: title (power gem on its left), the art, the kind, what it does. The art is always shown whole and square:
+   most pictures have writing along their top and bottom edges. */
 .hface, .bigcard {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  border-top: 4px solid var(--k); border-radius: 12px; color: var(--text);
-  background: linear-gradient(170deg, color-mix(in srgb, var(--tint) 100%, #fff 6%), var(--tint) 45%, color-mix(in srgb, var(--tint) 88%, #000));
-  box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --frame: color-mix(in srgb, var(--k) 70%, #15131a);
+  position: relative; display: flex; flex-direction: column; gap: 5px; padding: 5px 7px 8px;
+  border: 2px solid var(--frame); border-radius: 14px; color: var(--text); text-align: left;
+  background:
+    radial-gradient(130% 50% at 50% 0%, color-mix(in srgb, var(--k) 30%, transparent), transparent 75%),
+    linear-gradient(175deg, color-mix(in srgb, var(--k) 14%, #2c2837), #18161e 70%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
-.hi { font-size: 2.1rem; color: color-mix(in srgb, var(--k) 70%, #fff); }
-.ht { margin-top: 6px; font-weight: 700; font-size: 1rem; line-height: 1.15; }
-.hx { margin-top: 6px; font-size: 0.76rem; line-height: 1.4; color: #d6d2e0; overflow: hidden; }
-.hk { margin-top: auto; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--k) 70%, #fff); }
+.ht {
+  display: flex; align-items: center; flex: none; min-height: 2.2em; padding-left: 26px;
+  font-weight: 800; font-size: 0.82rem; line-height: 1.1; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.ht > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: balance; }
+.hart {
+  position: relative; flex: none; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: 9px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--k) 32%, #2a2633), #16141b);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+/* Shows while the picture loads, or if a card has no picture */
+.hart > .ms { font-size: 2.6rem; color: color-mix(in srgb, var(--k) 70%, #fff); opacity: 0.7; }
+.hart img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.25s; -webkit-user-drag: none; }
+.hart img.in { opacity: 1; }
+.hart::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 -20px 26px -20px rgba(0, 0, 0, 0.4);
+}
+.hk {
+  display: flex; align-items: center; gap: 4px; flex: none; font-size: 0.6rem; font-weight: 700; line-height: 1;
+  letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in srgb, var(--k) 65%, #fff);
+}
+.hk .ms { font-size: 1.3em; }
+.hk::after { content: ''; flex: 1; height: 1px; margin-left: 3px; background: linear-gradient(to right, color-mix(in srgb, var(--k) 55%, transparent), transparent); }
+.hx {
+  flex: 1; min-height: 0; overflow: hidden; padding: 4px 6px; border-radius: 7px;
+  font-size: 0.64rem; line-height: 1.32; color: #dcd8e6;
+  background: rgba(0, 0, 0, 0.2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 18%, transparent);
+}
+/* Power gem, top left like a cost: 1 to 4 */
 .pw {
-  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; font-style: normal;
-  background: var(--surface); color: var(--text); box-shadow: 0 0 0 2px var(--pc, var(--muted));
+  position: absolute; z-index: 2; top: 8px; left: 6px; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.72rem; font-weight: 800; font-style: normal; line-height: 1;
+  background: radial-gradient(circle at 35% 30%, var(--surface-3), var(--surface)); color: var(--text);
+  box-shadow: 0 0 0 2px var(--pc, var(--muted)), 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 .pw-1 { --pc: var(--muted); }
 .pw-2 { --pc: var(--good); }
 .pw-3 { --pc: var(--purple); }
-.pw-4 { --pc: var(--accent); background: var(--accent); color: var(--on-accent); }
+.pw-4 { --pc: #ffe19a; background: radial-gradient(circle at 35% 30%, #ffe19a, var(--accent) 60%, #c98a1c); color: var(--on-accent); }
+
+/* Legendaries: gold frame and a foil shine that sweeps across the art */
+.k-legend.hface, .k-legend .hface, .bigcard.k-legend {
+  --frame: #f2c45c;
+  background:
+    radial-gradient(130% 50% at 50% 0%, rgba(245, 185, 66, 0.4), transparent 75%),
+    linear-gradient(175deg, #3b3022, #19161c 70%);
+}
+.k-legend .hart::before, .k-legend.hface .hart::before, .bigcard.k-legend .hart::before {
+  content: ''; position: absolute; z-index: 1; inset: 0 -100%; pointer-events: none;
+  background: linear-gradient(110deg, transparent 42%, rgba(255, 244, 214, 0.5) 50%, transparent 58%);
+  animation: foil 5s ease-in-out infinite;
+}
+@keyframes foil { 0%, 60% { transform: translateX(-50%); } 100% { transform: translateX(50%); } }
+
+/* Small square of a card's art inside buttons (reactions, Snitch) */
+.cthumb { flex: none; width: 26px; height: 26px; border-radius: 6px; object-fit: cover; opacity: 0; transition: opacity 0.2s; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
+.cthumb.in { opacity: 1; }
 
 /* Your hand: fanned out under the board like a hand in Hearthstone. The button is the slot (it stays put, so moving the
    mouse up to the dock never gets stuck on a lifted card); the face inside lifts and straightens on hover. */
 .hand-dock { width: 100%; }
 .hand { display: flex; justify-content: center; align-items: flex-start; height: 118px; padding-top: 10px; clip-path: inset(-900px -900px 0 -900px); }
 .hand .empty { color: var(--muted); font-size: 0.85rem; align-self: center; margin-top: -12px; }
+/* At rest only the top 108px shows (title and the top of the art); hovering lifts the whole card out (--lift = 108 - height - 12). */
 .hcard {
-  --rot: 0deg; --drop: 0px; --gap: -18px; --lift: -150px;
-  position: relative; flex: none; width: 168px; height: 246px; margin: 0 var(--gap); padding: 0;
+  --rot: 0deg; --drop: 0px; --gap: -14px; --lift: -226px;
+  position: relative; flex: none; width: 176px; height: 322px; margin: 0 var(--gap); padding: 0;
   border: 0; background: none; color: inherit; font: inherit; cursor: default; outline: none;
   transform-origin: 50% 120%; transform: translateY(var(--drop)) rotate(var(--rot));
   transition: transform 0.3s var(--ease), margin 0.3s var(--ease);
   -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
 }
 .hcard .hface {
-  position: absolute; inset: 0; padding: 14px 12px 10px; pointer-events: none;
+  position: absolute; inset: 0; pointer-events: none;
   transform-origin: 50% 100%; filter: saturate(0.72) brightness(0.86);
   transition: transform 0.2s var(--ease), filter 0.2s, box-shadow 0.2s;
 }
@@ -560,7 +610,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .hcard.enter .hface { animation: card-in 0.55s var(--spring) both; animation-delay: var(--delay, 0s); }
 @keyframes card-in { from { transform: translateY(160px) rotate(-14deg) scale(0.7); opacity: 0; } 60% { opacity: 1; } }
 /* Cards leaving your hand: clones fly off while the real slot closes up */
-.ghost-card { position: fixed; z-index: 45; pointer-events: none; display: flex; flex-direction: column; align-items: center; padding: 14px 12px 10px; }
+.ghost-card { position: fixed; z-index: 45; pointer-events: none; }
 .ghost-card.exit-play { animation: exit-play 0.6s var(--ease) forwards; }
 .ghost-card.exit-toss { animation: exit-toss 0.55s cubic-bezier(0.5, 0, 0.9, 0.5) forwards; }
 .ghost-card.exit-lost { animation: exit-lost 0.7s var(--ease) forwards; }
@@ -568,23 +618,39 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 @keyframes exit-toss { to { transform: translate(var(--tx, 0), 260px) rotate(calc(var(--r0, 0deg) + 35deg)) scale(0.85); opacity: 0; } }
 @keyframes exit-lost { 30% { filter: brightness(1.6) saturate(0.2); } to { transform: rotate(var(--r0, 0deg)) translateY(-30px) scale(0.6); opacity: 0; filter: grayscale(1); } }
 
-/* ---------- Played card pop-up ---------- */
+/* ---------- Played card pop-up: the card itself, big, in the middle of the board, with who played it on a ribbon ---------- */
 .card-pop {
-  --c: var(--muted); --tint: color-mix(in srgb, var(--c) 22%, var(--surface-2));
-  position: fixed; left: 50%; top: 42%; width: min(340px, calc(100vw - 48px)); z-index: 30; transform: translate(-50%, -50%);
-  border-radius: 16px; padding: 22px 22px 18px; text-align: center; background: var(--tint); border-top: 6px solid var(--c);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line); cursor: pointer;
+  --c: var(--muted);
+  /* Sized so the whole card fits between the top bar and the HUD (the card is about its width + 200px tall) */
+  --avail: calc(100dvh - var(--top-h) - var(--hud-h) - 24px);
+  position: fixed; left: 50%; top: calc(var(--top-h) + (100dvh - var(--top-h) - var(--hud-h)) * 0.5); z-index: 30;
+  width: clamp(150px, calc(var(--avail) - 230px), 236px); transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;
   animation: pop-card 0.42s var(--spring);
 }
 .card-pop.leaving { animation: pop-out 0.3s var(--ease) forwards; }
-.card-pop .ck { display: inline-flex; align-items: center; gap: 6px; color: var(--k); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
-.card-pop .ct { font-size: 1.45rem; font-weight: 700; margin: 6px 0; }
-.card-pop .cx { font-size: 0.9rem; line-height: 1.4; color: #cfcadb; }
-.card-pop .cw { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.85rem; font-weight: 600; margin-top: 12px; flex-wrap: wrap; }
-.card-pop .cw .avatar { width: 22px; height: 22px; font-size: 0.7rem; }
-.card-pop .cw .ms { color: var(--muted); }
-.card-pop .x, .banner .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; color: var(--text); }
-.card-pop .pw { right: 40px; top: 10px; }
+.card-pop .pface {
+  width: 100%; gap: 6px; padding: 6px 8px 11px; border-width: 2.5px; border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.6), 0 0 46px -12px color-mix(in srgb, var(--k) 75%, transparent);
+}
+.card-pop .ht { font-size: 1.02rem; padding-left: 32px; }
+.card-pop .pw { width: 26px; height: 26px; font-size: 0.84rem; top: 9px; left: 7px; }
+.card-pop .hart { border-radius: 11px; }
+.card-pop .hk { font-size: 0.66rem; }
+.card-pop .hx { padding: 6px 8px; font-size: 0.82rem; line-height: 1.4; }
+.card-pop .cw {
+  display: flex; align-items: center; gap: 6px; max-width: min(440px, calc(100vw - 24px)); padding: 4px 12px 4px 4px;
+  border-radius: 999px; background: var(--glass); box-shadow: 0 0 0 1px var(--line), inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent), 0 8px 22px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 0.84rem; white-space: nowrap;
+}
+.card-pop .cw b { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.card-pop .cw .avatar { flex: none; width: 24px; height: 24px; font-size: 0.7rem; }
+.card-pop .cw .ms { flex: none; color: var(--muted); }
+.card-pop .x {
+  position: absolute; z-index: 3; top: -11px; right: -11px; width: 30px; height: 30px; border-radius: 50%; color: var(--text);
+  background: var(--surface-2); box-shadow: 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.banner .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; color: var(--text); }
 @keyframes pop-card { from { opacity: 0; transform: translate(-50%, -40%) scale(0.8) rotateX(30deg); } }
 @keyframes pop-out { to { opacity: 0; transform: translate(-50%, -56%) scale(0.94); } }
 
@@ -664,8 +730,9 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .react-desc { font-weight: 700; margin: 4px 0 10px; }
 .react-list { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
 .react-list .btn { min-height: 44px; }
-.react-list .btn.primary { flex-direction: column; gap: 2px; max-width: 240px; padding: 9px 14px; }
-.react-list .rl-t { display: inline-flex; align-items: center; gap: 5px; }
+.react-list .btn.primary { gap: 10px; max-width: 260px; padding: 7px 14px 7px 7px; justify-content: flex-start; text-align: left; }
+.react-list .cthumb { width: 42px; height: 42px; border-radius: 8px; }
+.react-list .rl-b { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .react-list small { font-size: 0.72rem; font-weight: 500; line-height: 1.3; white-space: normal; opacity: 0.8; }
 .react-bar .timer { width: calc(100% + 32px); margin: 0 -16px; height: 5px; }
 .react-bar .timer i { background: var(--blue); }
@@ -722,8 +789,8 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .sheet-nav .icon-btn:disabled { opacity: 0.25; }
 .sheet-card { touch-action: pan-y; }
 .bigcard {
-  position: relative; width: min(240px, 62vw); aspect-ratio: 168 / 246; padding: 20px 16px 14px;
-  border-top-width: 6px; border-radius: 16px; box-shadow: 0 0 0 1px var(--line), 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px -10px color-mix(in srgb, var(--k) 70%, transparent);
+  width: min(236px, 64vw); gap: 6px; padding: 6px 8px 12px; border-width: 2.5px; border-radius: 17px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 46px -12px color-mix(in srgb, var(--k) 75%, transparent);
   animation: big-in 0.36s var(--spring);
 }
 .bigcard.from-left { animation-name: big-in-left; }
@@ -731,11 +798,11 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 @keyframes big-in { from { opacity: 0; transform: scale(0.7) translateY(40px); } }
 @keyframes big-in-left { from { opacity: 0; transform: translateX(-60px) rotate(-6deg); } }
 @keyframes big-in-right { from { opacity: 0; transform: translateX(60px) rotate(6deg); } }
-.bigcard .hi { font-size: 3rem; }
-.bigcard .ht { font-size: 1.35rem; margin-top: 8px; }
-.bigcard .hx { font-size: 0.95rem; margin-top: 10px; overflow: visible; }
-.bigcard .hk { font-size: 0.72rem; }
-.bigcard .pw { width: 30px; height: 30px; font-size: 0.9rem; top: 12px; right: 12px; }
+.bigcard .ht { font-size: 1.06rem; padding-left: 33px; }
+.bigcard .pw { width: 27px; height: 27px; font-size: 0.86rem; top: 9px; left: 7px; }
+.bigcard .hart { border-radius: 11px; }
+.bigcard .hk { font-size: 0.68rem; }
+.bigcard .hx { padding: 7px 9px; font-size: 0.88rem; line-height: 1.42; overflow: visible; }
 .sheet-note { max-width: 34ch; text-align: center; color: var(--text); font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
 .sheet-note:empty { display: none; }
 .sheet-note .ms { color: var(--accent); margin-right: 4px; }
@@ -987,13 +1054,14 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
 
   .hand { height: auto; min-height: 98px; padding-top: 4px; align-items: flex-end; clip-path: none; }
   .hand .empty { margin: 0; align-self: center; }
+  /* Mini cards: the art on top, the title under it. Tap one to read it big in the card sheet. */
   .hcard { width: 72px; height: 98px; --lift: -12px; }
-  .hcard .hface, .ghost-card { padding: 7px 4px 5px; border-top-width: 3px; border-radius: 9px; }
-  .hcard .hi, .ghost-card .hi { font-size: 1.45rem; }
-  .hcard .ht, .ghost-card .ht { font-size: 0.66rem; margin-top: 3px; line-height: 1.12; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-  .hcard .hx, .ghost-card .hx { display: none; }
-  .hcard .hk, .ghost-card .hk { font-size: 0.48rem; letter-spacing: 0.06em; }
-  .hcard .pw, .ghost-card .pw { width: 16px; height: 16px; font-size: 0.56rem; top: 3px; right: 3px; box-shadow: 0 0 0 1.5px var(--pc, var(--muted)); }
+  .hcard .hface, .ghost-card { gap: 3px; padding: 4px; border-width: 1.5px; border-radius: 9px; }
+  .hcard .hart, .ghost-card .hart { order: -1; border-radius: 6px; }
+  .hcard .hart > .ms, .ghost-card .hart > .ms { font-size: 1.6rem; }
+  .hcard .ht, .ghost-card .ht { flex: 1; justify-content: center; min-height: 0; padding: 0 1px; font-size: 0.56rem; line-height: 1.08; text-align: center; }
+  .hcard .hx, .ghost-card .hx, .hcard .hk, .ghost-card .hk { display: none; }
+  .hcard .pw, .ghost-card .pw { width: 15px; height: 15px; font-size: 0.52rem; top: 6px; left: 6px; box-shadow: 0 0 0 1.5px var(--pc, var(--muted)), 0 1px 3px rgba(0, 0, 0, 0.6); }
   .hcard:hover .hface, .hcard:focus-visible .hface { transform: translateY(-8px) rotate(calc(var(--rot) * -1)) scale(1.06); }
   .hcard.sel .hface { transform: translateY(-12px) rotate(calc(var(--rot) * -1)); }
   @keyframes pick-bob { 50% { transform: translateY(-6px); } }
@@ -1009,9 +1077,11 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
   .banner { padding: 9px 34px; border-radius: 12px; border-top-width: 3px; }
   .banner .bt { font-size: 1.02rem; }
   .banner .bs { font-size: 0.8rem; }
-  .card-pop { top: calc(var(--top-h) + (100dvh - var(--top-h) - var(--hud-h)) * 0.5); width: min(300px, calc(100vw - 48px)); padding: 16px 18px 14px; }
-  .card-pop .ct { font-size: 1.2rem; }
-  .card-pop .cx { font-size: 0.84rem; }
+  .card-pop { width: clamp(140px, calc(var(--avail) - 200px), 210px); }
+  .card-pop .ht { font-size: 0.84rem; padding-left: 30px; }
+  .card-pop .pw { width: 24px; height: 24px; font-size: 0.78rem; }
+  .card-pop .hx { font-size: 0.76rem; line-height: 1.36; }
+  .card-pop .hk { font-size: 0.6rem; }
   .splash { top: calc(var(--top-h) + (100dvh - var(--top-h) - var(--hud-h)) * 0.45); }
   .react-bar { bottom: calc(10px + var(--safe-b)); padding: 10px 12px 0; }
   .react-list { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 10px; }
@@ -1025,11 +1095,10 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
 /* Tablets and big phones held upright: roomier cards and chips */
 @media (min-width: 600px) and (max-width: 1000px) and (min-height: 700px) {
   .hcard { width: 94px; height: 128px; }
-  .hcard .hface { padding: 10px 6px 7px; }
-  .hcard .hi { font-size: 1.9rem; }
-  .hcard .ht { font-size: 0.8rem; }
-  .hcard .hk { font-size: 0.56rem; }
-  .hcard .pw { width: 20px; height: 20px; font-size: 0.66rem; }
+  .hcard .hface { padding: 5px; gap: 4px; }
+  .hcard .hart > .ms { font-size: 2.1rem; }
+  .hcard .ht { font-size: 0.68rem; }
+  .hcard .pw { width: 18px; height: 18px; font-size: 0.6rem; top: 8px; left: 8px; }
   .players-panel:not(.expanded) .prow .avatar { width: 36px; height: 36px; }
   .players-panel:not(.expanded) .prow .pname { font-size: 0.76rem; max-width: 90px; }
   .players-panel:not(.expanded) .prow .paura { font-size: 1.05rem; }
@@ -1054,15 +1123,24 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
   .steps li { height: 22px; }
   .turn-btns .btn { min-height: 40px; padding: 6px 2px; font-size: 0.82rem; }
   .turn-btns .btn .ms { display: none; }
-  .hand { min-height: 84px; }
-  .hcard { width: 60px; height: 84px; }
-  .hcard .hi { font-size: 1.2rem; }
-  .hcard .ht { font-size: 0.58rem; }
+  .hand { min-height: 88px; }
+  .hcard { width: 60px; height: 88px; }
+  .hcard .hface { padding: 3px; }
+  .hcard .hart > .ms { font-size: 1.3rem; }
+  .hcard .ht { font-size: 0.54rem; }
+  .hcard .pw { top: 5px; left: 5px; }
   .stickers { right: auto; left: calc(10px + var(--safe-l)); bottom: calc(10px + var(--safe-b)); align-items: flex-start; }
   .stickers-panel { max-height: calc(100dvh - 80px); transform-origin: bottom left; }
   .banners, .splash, .card-pop { left: calc((100vw - 320px) / 2); }
   .banners { top: calc(8px + var(--safe-t)); width: min(400px, calc(100vw - 344px)); }
-  .card-pop { top: 50%; width: min(280px, calc(100vw - 360px)); }
+  .card-pop { --avail: calc(100dvh - 20px); top: 50%; width: clamp(120px, calc(var(--avail) - 210px), 170px); gap: 5px; }
+  .card-pop .pface { gap: 4px; padding: 4px 6px 8px; }
+  .card-pop .ht { font-size: 0.8rem; padding-left: 26px; }
+  .card-pop .pw { width: 20px; height: 20px; font-size: 0.66rem; top: 7px; left: 5px; }
+  .card-pop .hx { padding: 4px 6px; font-size: 0.66rem; line-height: 1.3; }
+  .card-pop .hk { font-size: 0.54rem; }
+  .card-pop .cw { font-size: 0.74rem; padding: 3px 10px 3px 3px; }
+  .card-pop .cw .avatar { width: 20px; height: 20px; }
   .splash { top: 45%; }
   .players-panel.expanded { max-height: calc(100dvh - 16px); }
   .game-menu { top: calc(52px + var(--safe-t)); }
@@ -1080,10 +1158,11 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
   .sheet-nav { grid-column: 1; grid-row: 1 / span 3; }
   .sheet-dots { grid-column: 2; justify-content: center; }
   .sheet-note, .sheet-actions { grid-column: 2; }
-  .bigcard { width: auto; height: min(330px, calc(100dvh - 30px)); padding: 14px 14px 10px; }
-  .bigcard .hi { font-size: 2.3rem; }
-  .bigcard .ht { font-size: 1.15rem; }
-  .bigcard .hx { font-size: 0.85rem; }
+  .bigcard { width: clamp(140px, calc(100dvh - 210px), 180px); max-height: calc(100dvh - 20px); gap: 4px; padding: 4px 6px 8px; }
+  .bigcard .ht { font-size: 0.84rem; padding-left: 27px; }
+  .bigcard .pw { width: 21px; height: 21px; font-size: 0.68rem; top: 7px; left: 5px; }
+  .bigcard .hk { font-size: 0.56rem; }
+  .bigcard .hx { padding: 5px 7px; font-size: 0.7rem; line-height: 1.32; overflow-y: auto; }
   .sheet-actions .btn { min-height: 42px; }
 }
 
@@ -1098,5 +1177,6 @@ body:not(:has(#screen-game.active)) .debug-fab { top: auto; bottom: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .champ.mythic, .cz-name.mythic { animation: none; }
+  .hart::before { display: none; }
   .dice-opt:hover img { transform: none; }
 }

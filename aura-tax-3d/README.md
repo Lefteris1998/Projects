@@ -68,4 +68,5 @@ Notes:
 
 - `server.js`: Express plus Socket.IO. The server is authoritative and holds all game logic (the lobby, turns, cards and reactions, aura economy, timers). Hands are private: each rider only receives their own cards.
 - `public/`: plain HTML, CSS and JS with no build step. Socket.IO's client script is served by the server.
+- `public/cards/`: the card art, one 512×512 WebP per card, named after the card's key in `server.js` (`ride2.webp`, `deathnote.webp`, ...). A card without a picture shows its kind's icon instead.
 - `public/clay.js`, `clay-core.js`, `clay-worker.js`: the champions are sculpted from signed distance fields (shapes blended like clay, carved, roughened, painted) and meshed in web workers. Meshes are cached, and a colour change only recolours the existing mesh. `public/anatomy.js` holds the shared sculpted heads, hands, arms, legs and shoes; `public/champions.js` builds each champion from them.

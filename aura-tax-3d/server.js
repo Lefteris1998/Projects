@@ -903,7 +903,7 @@ async function contest(room, ctx, gen) {
   const { actor, target } = ctx;
   const by = r.by;
   const d = CARDS[r.kind];
-  fx(room, { type: 'card', pid: by.id, title: d.title, text: d.text, kind: 'react', label: 'REACTION' });
+  fx(room, { type: 'card', pid: by.id, key: r.kind, title: d.title, text: d.text, kind: 'react', label: 'REACTION' });
   let res = 'cancel';
   switch (r.kind) {
     case 'dodge':
@@ -1103,7 +1103,7 @@ async function playCard(room, p, c, arg, gen) {
   discard(room, c);
   p.stats.cards++;
   const t = d.target === 'player' ? byId(room, arg) : null;
-  fx(room, { type: 'card', pid: p.id, title: d.title, text: d.text, kind: d.kind, power: powerOf(c.key), target: t ? t.id : null });
+  fx(room, { type: 'card', pid: p.id, key: c.key, title: d.title, text: d.text, kind: d.kind, power: powerOf(c.key), target: t ? t.id : null });
   log(room, `${p.name} played ${d.title}${t ? ` on ${t.name}` : ''}.`, 'card');
   broadcast(room);
   await sleep(1600);

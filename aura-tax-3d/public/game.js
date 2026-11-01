@@ -856,7 +856,7 @@ function renderActions() {
       const peek = (S.me && S.me.peek) || [];
       showChooser({
         title: 'Snitch', text: 'This is their hand. Take one card.', icon: 'visibility', urgent: true,
-        buttons: peek.map(cd => ({ label: [ms(KINDS[cd.kind].icon), cd.title], key: cd.uid, onclick: () => choose(cd.uid) })),
+        buttons: peek.map(cd => ({ label: [cardThumb(cd), cd.title], key: cd.uid, onclick: () => choose(cd.uid) })),
       });
     }
   } else if (pend) {
@@ -1004,13 +1004,25 @@ function setTimer(bar, left, total) {
 // Small circle in the top-right corner of a card: how strong it is, 1 to 4.
 const POWER_TIPS = ['', 'Weak card', 'Solid card', 'Strong card', 'Legendary: the strongest cards'];
 const powerDot = n => (n ? h('span', { class: `pw pw-${n}`, 'data-tip': `Power ${n} of 4. ${POWER_TIPS[n]}` }, String(n)) : null);
-const faceParts = cd => [
-  powerDot(cd.power),
-  h('span', { class: 'ms hi', 'aria-hidden': 'true' }, KINDS[cd.kind].icon),
-  h('div', { class: 'ht' }, cd.title),
-  h('div', { class: 'hx' }, cd.text),
-  h('div', { class: 'hk' }, KINDS[cd.kind].label),
-];
+// Card art lives in cards/<key>.webp. It fades in once loaded; if it's missing, the kind's icon underneath shows instead.
+const cardSrc = key => `cards/${key}.webp`;
+const artImg = (key, cls) => h('img', {
+  class: cls, src: cardSrc(key), alt: '', draggable: 'false', decoding: 'async',
+  onload: e => e.target.classList.add('in'), onerror: e => e.target.remove(),
+});
+// A small square of a card's art, for buttons that name a card (reactions, Snitch).
+const cardThumb = cd => (cd.key ? artImg(cd.key, 'cthumb') : ms(KINDS[cd.kind].icon));
+// A card's face, top to bottom: title, art, kind, what it does. `label` overrides the kind's name.
+const faceParts = (cd, label) => {
+  const k = KINDS[cd.kind] || KINDS.social;
+  return [
+    powerDot(cd.power),
+    h('div', { class: 'ht' }, h('span', null, cd.title)),
+    h('div', { class: 'hart' }, h('span', { class: 'ms', 'aria-hidden': 'true' }, k.icon), cd.key ? artImg(cd.key) : null),
+    h('div', { class: 'hk' }, ms(k.icon), label || k.label),
+    h('div', { class: 'hx' }, cd.text),
+  ];
+};
 
 const handEls = new Map(); // uid -> slot element
 const handFx = new Map(); // uid -> how it left my hand: 'play' or 'toss'
@@ -1027,9 +1039,9 @@ function resetHand() {
 function fanLayout(n) {
   const wide = desktop.matches;
   const sample = $('#hand .hcard');
-  const cardW = (sample && sample.offsetWidth) || (wide ? 168 : sideways.matches ? 60 : 72); // CSS sets the size per screen
+  const cardW = (sample && sample.offsetWidth) || (wide ? 176 : sideways.matches ? 60 : 72); // CSS sets the size per screen
   const avail = Math.max(120, $('#hand-wrap').clientWidth - 8);
-  let gap = wide ? -18 : -5;
+  let gap = wide ? -14 : -5;
   // Squeeze them together so any number of cards fits
   if (n * (cardW + 2 * gap) > avail) gap = Math.min(gap, (avail / n - cardW) / 2);
   const squeeze = Math.min(1, avail / Math.max(1, n * cardW * 0.8));
@@ -1114,6 +1126,7 @@ function cardLeaves(el, how) {
   const rot = el.style.getPropertyValue('--rot') || '0deg';
   const ghost = face.cloneNode(true);
   ghost.className = `ghost-card hface ${[...el.classList].find(c => c.startsWith('k-')) || ''} exit-${how}`;
+  ghost.querySelectorAll('img').forEach(img => img.classList.add('in')); // clones lose the fade-in listener
   const pop = $('#card-pop').getBoundingClientRect();
   const toX = (pop.width ? pop.left + pop.width / 2 : innerWidth / 2) - cx;
   const toY = (pop.height ? pop.top + pop.height / 2 : innerHeight * 0.42) - cy;
@@ -1268,7 +1281,7 @@ function renderReaction() {
       ...cards.map(c => h('button', {
         class: 'btn primary', type: 'button',
         onclick: () => { handFx.set(c.uid, 'play'); socket.emit('react', c.uid); bar.classList.add('hidden'); },
-      }, h('span', { class: 'rl-t' }, ms(KINDS.react.icon), c.title), h('small', null, c.text.replace(/^Reaction:\s*/, '')))),
+      }, cardThumb(c), h('span', { class: 'rl-b' }, h('span', { class: 'rl-t' }, c.title), h('small', null, c.text.replace(/^Reaction:\s*/, ''))))),
       h('button', { class: 'btn ghost', type: 'button', onclick: () => { socket.emit('react', null); bar.classList.add('hidden'); } }, 'Skip'));
     setTimer($('#react-timer'), r.timeLeft, r.timeTotal);
   }
@@ -1518,7 +1531,6 @@ function tbagFx(thief, victim) {
 function showCard(f) {
   const p = player(f.pid);
   const t = player(f.target);
-  const k = KINDS[f.kind] || KINDS.social;
   const pop = $('#card-pop');
   const hide = () => {
     if (pop.classList.contains('hidden')) return;
@@ -1529,13 +1541,12 @@ function showCard(f) {
   pop.className = `card-pop k-${f.kind}`;
   pop.style.cssText = p ? `--c:${p.color}` : '';
   pop.onclick = hide;
+  // The card itself, big, with who played it (and on whom) on a ribbon above
   fill(pop,
-    h('button', { class: 'icon-btn x', type: 'button', 'aria-label': 'Close' }, ms('close')),
-    powerDot(f.power),
-    h('div', { class: 'ck' }, ms(k.icon), f.label || k.label),
-    h('div', { class: 'ct' }, f.title),
-    h('div', { class: 'cx' }, f.text),
-    p ? h('div', { class: 'cw' }, avatar(p), p.name, t ? [ms('arrow_forward'), avatar(t), t.name] : null) : null);
+    p ? h('div', { class: 'cw' }, avatar(p), h('b', null, p.name), t ? [ms('arrow_forward'), avatar(t), h('b', null, t.name)] : null) : null,
+    h('div', { class: 'pface hface' },
+      ...faceParts({ key: f.key, kind: f.kind, title: f.title, text: f.text, power: f.power }),
+      h('button', { class: 'icon-btn x', type: 'button', 'aria-label': 'Close' }, ms('close'))));
   sfxUi('card');
   clearTimeout(showCard.t);
   clearTimeout(showCard.t2);
