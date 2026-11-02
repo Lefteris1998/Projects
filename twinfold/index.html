@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twinfold</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="frame">
+    <canvas id="game" width="640" height="352"></canvas>
+
+    <div id="hud" class="hidden">
+      <div id="hud-level"><span id="hud-num">01</span><span id="hud-name"></span></div>
+      <div class="hud-right">
+      <div id="hud-time" title="time this run">0:00.00</div>
+      <div id="hud-tries-wrap" title="tries"><span class="lbl-s">try</span><span id="hud-tries">1</span></div>
+      <div id="hud-deaths-wrap" title="deaths"><i class="skull"></i><span id="hud-deaths">0</span></div>
+      <div id="hud-portals" title="portals placed / par">
+        <span class="pair"><i class="dot a"></i><i class="dot b"></i></span>
+        <span id="hud-count">0</span><span id="hud-par">2</span>
+      </div>
+      </div>
+    </div>
+
+    <section id="title" class="screen">
+      <h1 class="logo" aria-label="Twinfold"><span class="a">TWIN</span><span class="b">FOLD</span></h1>
+      <div class="menu">
+        <button id="btn-play" class="btn primary">Play</button>
+        <button id="btn-select" class="btn">Chambers</button>
+      </div>
+    </section>
+
+    <section id="select" class="screen hidden">
+      <h2>Chambers</h2>
+      <div id="grid"></div>
+      <div id="sum-time" class="sum"></div>
+      <div class="menu row"><button id="btn-back" class="btn ghost">Back</button></div>
+    </section>
+
+    <section id="pause" class="screen hidden">
+      <h2>Paused</h2>
+      <div class="menu">
+        <button id="btn-resume" class="btn primary">Resume</button>
+        <button id="btn-restart" class="btn">Restart</button>
+        <button id="btn-chambers" class="btn">Chambers</button>
+      </div>
+      <dl class="keys">
+        <dt>A D</dt><dd>move</dd>
+        <dt>W / Space</dt><dd>jump</dd>
+        <dt>Left click</dt><dd>mint portal</dd>
+        <dt>Right click</dt><dd>violet portal</dd>
+        <dt>E</dt><dd>grab / drop</dd>
+        <dt>R</dt><dd>restart</dd>
+      </dl>
+    </section>
+
+    <section id="clear" class="screen hidden">
+      <div class="card">
+        <div id="clear-num" class="clear-num">Chamber 01</div>
+        <div class="clear-stats">
+          <div><span id="clear-time" class="big">0:00.00</span><span class="lbl">time</span></div>
+          <div><span id="clear-best" class="big dim">-</span><span class="lbl">best time</span></div>
+          <div><span id="clear-tries" class="big">1</span><span class="lbl">tries</span></div>
+        </div>
+        <div class="clear-stats small">
+          <div><span id="clear-total" class="mid dim">0:00</span><span class="lbl">total time</span></div>
+          <div><span id="clear-count" class="mid">0</span><span class="lbl">portals</span></div>
+          <div><span id="clear-par" class="mid dim">0</span><span class="lbl">par</span></div>
+          <div id="clear-deaths-wrap"><span id="clear-deaths" class="mid hot">0</span><span class="lbl">deaths</span></div>
+        </div>
+        <div id="clear-mark" class="mark"></div>
+        <div class="menu row">
+          <button id="btn-retry" class="btn ghost">Retry</button>
+          <button id="btn-next" class="btn primary">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <button id="mute" class="icon-btn" aria-label="Toggle sound"></button>
+  </div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/chambers.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
