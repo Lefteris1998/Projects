@@ -8,7 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const angle = require('./angle-studio/serve.js');
-const quip = require('./quip-brawl/server.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 8080;
@@ -20,17 +19,13 @@ const TYPES = {
   '.wasm': 'application/wasm', '.ogg': 'audio/ogg', '.md': 'text/plain; charset=utf-8',
 };
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const p = decodeURIComponent(url.pathname);
 
     if (p.startsWith('/angle-studio/api/')) {
       if (await angle.handleApi(req, res, url, p.slice('/angle-studio'.length)) === false) angle.send(res, 404, 'not found');
-      return;
-    }
-    if (p.startsWith('/quip-brawl/api/')) {
-      if (await quip.handleApi(req, res, url, p.slice('/quip-brawl'.length)) === false) angle.send(res, 404, 'not found');
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') return angle.send(res, 405, 'method not allowed');
@@ -48,11 +43,10 @@ http.createServer(async (req, res) => {
   } catch (e) {
     angle.send(res, 500, String(e.message || e));
   }
-}).listen(PORT, '127.0.0.1', () => {
+});
+server.listen(PORT, '127.0.0.1', () => {
   const link = `http://localhost:${PORT}/` + (process.argv.find(a => a.startsWith('--page=')) || '').slice(7);
   console.log(`Projects running at http://localhost:${PORT}  (close this window to stop)`);
-  // Only the party game is exposed to the Wi-Fi (on its own port) so phones can join; everything else stays local
-  quip.listenLan(urls => console.log(`Quip Brawl phones join at ${urls[0] || `http://localhost:${quip.LAN_PORT}/`}`));
   if (process.argv.includes('--open')) {
     const cmd = process.platform === 'win32' ? `start "" "${link}"` : process.platform === 'darwin' ? `open "${link}"` : `xdg-open "${link}"`;
     exec(cmd);

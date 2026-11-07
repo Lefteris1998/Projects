@@ -1,0 +1,20 @@
+# Secrets - never commit these
+.env
+.env.*
+!.env.example
+blindfold-trainer/firebase-config.js
+*.pem
+*.key
+
+# Dependencies, logs, OS junk
+node_modules/
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local-only folders
+.claude/
+_backup*/
+angle-studio/images/

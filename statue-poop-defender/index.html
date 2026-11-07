@@ -8,6 +8,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
+  <style id="page-transition">
+    /* smooth hand-off between the projects page and each project (cross-document view transitions, Chrome/Edge):
+       the old page sinks away into a blur while the new one eases in from the dark */
+    @view-transition { navigation: auto; }
+    ::view-transition-group(root) { animation-duration: 0.8s; }
+    ::view-transition-old(root) { animation: pt-out 0.45s ease-in both; }
+    ::view-transition-new(root) { animation: pt-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes pt-out { to { opacity: 0; filter: blur(6px); } }
+    @keyframes pt-in { from { opacity: 0; transform: scale(1.035); filter: blur(10px); } }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+  </style>
 </head>
 <body>
   <canvas id="view"></canvas>
