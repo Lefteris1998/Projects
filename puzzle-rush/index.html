@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2e2a24" />
+  <title>Puzzle Rush</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
+  <link rel="stylesheet" href="style.css">
+  <style id="page-transition">
+    @view-transition { navigation: auto; }
+    ::view-transition-group(root) { animation-duration: 0.8s; }
+    ::view-transition-old(root) { animation: pt-out 0.45s ease-in both; }
+    ::view-transition-new(root) { animation: pt-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes pt-out { to { opacity: 0; filter: blur(6px); } }
+    @keyframes pt-in { from { opacity: 0; transform: scale(1.035); filter: blur(10px); } }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+  </style>
+</head>
+<body class="s-setup">
+  <header>
+    <a href="../index.html" title="Projects"><span class="ms">arrow_back</span></a>
+    <h1>Puzzle Rush</h1>
+    <button id="soundBtn" class="icon flat" title="Sound"><span class="ms">volume_up</span></button>
+  </header>
+
+  <main>
+    <!-- Clock, score, combo: beside the board on desktop, above it on phones -->
+    <section id="hud" class="panel">
+      <div class="hud-top">
+        <div class="clock" id="clock">1:30</div>
+        <div class="score"><b id="score">0</b><small id="scoreLabel">points</small></div>
+      </div>
+      <div class="combo">
+        <div class="combo-bar"><div id="comboFill"></div></div>
+        <div class="combo-info"><span id="comboCount">0</span><span id="comboNext">+1</span></div>
+      </div>
+      <div class="hud-row">
+        <div id="strikes" class="strikes"></div>
+        <div id="hint" class="hint"></div>
+      </div>
+    </section>
+
+    <section id="boardArea">
+      <div id="boardWrap">
+        <div id="board"></div>
+        <div id="promo" hidden></div>
+        <div id="veil" hidden><span id="veilText"></span></div>
+      </div>
+    </section>
+
+    <section id="controls">
+      <button id="skipBtn"><span class="ms">skip_next</span><span>Skip</span></button>
+      <button id="endBtn"><span class="ms">stop</span><span>End</span></button>
+    </section>
+
+    <section id="history" class="panel"></section>
+
+    <!-- Setup -->
+    <section id="setup" class="panel">
+      <h2>Mode</h2>
+      <div class="chips" id="modes"></div>
+      <p class="desc" id="modeDesc"></p>
+      <div id="customRow" class="row">
+        <label class="field">Minutes
+          <span class="stepper"><button data-step="-1">−</button><b id="minutes">3</b><button data-step="1">+</button></span>
+        </label>
+        <label class="field">Strikes
+          <span class="seg" id="strikeSeg"></span>
+        </label>
+      </div>
+
+      <h2>Puzzles</h2>
+      <div class="seg wide" id="sourceSeg">
+        <button data-v="racer">Lichess Racer set</button>
+        <button data-v="pack">Pick puzzles</button>
+      </div>
+      <div id="pack">
+        <h3>Rating</h3>
+        <div class="chips" id="bands"></div>
+        <label class="switch"><input type="checkbox" id="progressive"><span></span>Get harder as you go</label>
+        <h3>Colour</h3>
+        <div class="seg" id="colorSeg">
+          <button data-v="w">White</button><button data-v="b">Black</button><button data-v="both">Both</button>
+        </div>
+        <h3>Themes</h3>
+        <button id="themesBtn" class="pick"><span id="themesLabel">All themes</span><span class="ms">tune</span></button>
+        <h3>Opening</h3>
+        <select id="opening"></select>
+        <p class="desc" id="poolCount"></p>
+      </div>
+
+      <label class="switch"><input type="checkbox" id="autoQueen"><span></span>Auto-queen</label>
+      <div class="start">
+        <div class="best" id="bestLine"></div>
+        <button id="startBtn" class="primary big">Start</button>
+        <p class="desc bad" id="setupMsg"></p>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="result" class="panel">
+      <div class="res-head">
+        <div><b id="resScore">0</b><small id="resLabel"></small></div>
+        <span id="newBest" class="badge" hidden>New best</span>
+      </div>
+      <div class="stats" id="resStats"></div>
+      <div class="chart-head"><h2>Progress</h2><label class="goal">Goal <input id="goal" type="number" min="1" max="999"></label></div>
+      <div id="chart"></div>
+      <div class="list-head">
+        <h2>Puzzles</h2>
+        <div class="seg small" id="sortSeg"><button data-v="order">Order</button><button data-v="slow">Slowest</button><button data-v="miss">Missed</button></div>
+      </div>
+      <div id="resList"></div>
+      <div class="row end">
+        <button id="setupBtn"><span class="ms">tune</span><span>Settings</span></button>
+        <button id="againBtn" class="primary"><span class="ms">replay</span><span>Play again</span></button>
+      </div>
+    </section>
+
+    <!-- Review one puzzle from the results -->
+    <section id="review" class="panel">
+      <div class="rev-head"><b id="revRating"></b><span id="revStatus"></span></div>
+      <p class="desc" id="revThemes"></p>
+      <div class="row">
+        <button id="revRetry"><span class="ms">refresh</span><span>Retry</span></button>
+        <button id="revSolution"><span class="ms">visibility</span><span>Solution</span></button>
+        <a id="revLink" class="btn" target="_blank" rel="noopener"><span class="ms">open_in_new</span><span>Lichess</span></a>
+      </div>
+      <button id="revBack" class="primary"><span class="ms">arrow_back</span><span>Results</span></button>
+    </section>
+  </main>
+
+  <dialog id="themesDlg">
+    <div class="dlg-head">
+      <input id="themeSearch" type="search" placeholder="Search themes">
+      <button id="themesClear" class="flat">Clear</button>
+      <button id="themesDone" class="primary">Done</button>
+    </div>
+    <div id="themeGroups"></div>
+  </dialog>
+
+  <script src="chess.js"></script>
+  <script src="board.js"></script>
+  <script src="pool.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

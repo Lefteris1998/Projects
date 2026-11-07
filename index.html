@@ -127,6 +127,13 @@
     @keyframes brace { 0%, 59%, 100% { transform: none; } 61% { transform: scaleY(0.94) translateX(-2px); } 70% { transform: none; } }
     @keyframes topple { 0%, 62%, 100% { transform: none; } 70%, 92% { transform: rotate(84deg); } }
     /* Angle Studio: a flat picture swings round and shows it's really a 3D relief */
+    /* Puzzle Rush: a knight sprints past a stopwatch whose hand ticks round */
+    .s-rush .hand { transform-origin: 196px 66px; animation: tick 4s steps(16) infinite; }
+    .s-rush .runner { animation: dash 2s ease-in-out infinite; }
+    .s-rush .lines { animation: streak 2s ease-in-out infinite; }
+    @keyframes tick { to { transform: rotate(360deg); } }
+    @keyframes dash { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(10px, -10px); } 50% { transform: translate(20px, 0); } 75% { transform: translate(10px, -6px); } }
+    @keyframes streak { 0%, 100% { opacity: .35; transform: translateX(0); } 50% { opacity: 1; transform: translateX(12px); } }
     .s-angle { position: absolute; inset: 0; display: grid; place-items: center; perspective: 420px; }
     .s-angle .rig { position: relative; width: 96px; height: 66px; transform-style: preserve-3d; animation: orbit 5s ease-in-out infinite alternate; }
     .s-angle .layer { position: absolute; inset: 0; }
@@ -452,6 +459,25 @@
           </svg>
         </div>
         <h2><md-icon aria-hidden="true">menu_book</md-icon>Capablanca Book</h2>
+      </a>
+      <a class="card" href="puzzle-rush/" data-tab="tools">
+        <md-ripple></md-ripple><md-focus-ring></md-focus-ring>
+        <div class="art" aria-hidden="true">
+          <svg class="s-rush" viewBox="0 0 320 132" preserveAspectRatio="xMidYMax meet">
+            <!-- a pixel stopwatch with a ticking hand, and a knight racing past it -->
+            <defs><pattern id="chk-rush" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="#1c0b0b"/><rect width="14" height="14" fill="#341818"/><rect x="14" y="14" width="14" height="14" fill="#341818"/></pattern></defs>
+            <rect y="104" width="320" height="28" fill="url(#chk-rush)"/>
+            <rect x="188" y="18" width="16" height="8" fill="#806460"/>
+            <circle cx="196" cy="66" r="38" fill="#6d0207" stroke="#ef3b45" stroke-width="6"/>
+            <circle cx="196" cy="66" r="28" fill="#f3e9e4"/>
+            <g fill="#3a2624"><rect x="194" y="40" width="4" height="6"/><rect x="194" y="86" width="4" height="6"/><rect x="170" y="64" width="6" height="4"/><rect x="216" y="64" width="6" height="4"/></g>
+            <rect class="hand" x="194" y="44" width="4" height="24" fill="#c4121f"/>
+            <rect x="192" y="62" width="8" height="8" fill="#3a2624"/>
+            <g class="lines" fill="#ff7a2e"><rect x="40" y="70" width="34" height="5"/><rect x="28" y="84" width="46" height="5"/><rect x="48" y="98" width="26" height="5"/></g>
+            <text class="runner" x="104" y="104" text-anchor="middle" font-size="56" fill="#f3e9e4" font-family="'Segoe UI Symbol', 'Noto Sans Symbols 2', 'DejaVu Sans', serif">♞</text>
+          </svg>
+        </div>
+        <h2><md-icon aria-hidden="true">timer</md-icon>Puzzle Rush</h2>
       </a>
       <a class="card" href="trap-trainer/index.html" data-tab="tools">
         <md-ripple></md-ripple><md-focus-ring></md-focus-ring>

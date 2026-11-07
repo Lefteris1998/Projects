@@ -557,7 +557,7 @@
         const f = flip ? 7 - c : c, rank = flip ? r + 1 : 8 - r;
         const sq = 'abcdefgh'[f] + rank;
         const el = document.createElement('div');
-        el.className = 'sq ' + ((f + rank) % 2 ? 'light' : 'dark');
+        el.className = 'sq ' + ((f + rank) % 2 ? 'dark' : 'light');
         el.dataset.sq = sq;
         if (lastMove && (sq === lastMove.from || sq === lastMove.to)) el.classList.add('last');
         if (!viewing) {
