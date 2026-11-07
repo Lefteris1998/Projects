@@ -20,7 +20,7 @@ const BANDS = [600, 800, 1000, 1200, 1400, 1600, 1800];
 
 const DEFAULTS = {
   mode: 'racer', source: 'racer', bands: [1000, 1200], progressive: true, color: 'both', themes: [], opening: '',
-  autoQueen: true, sound: true, minutes: 3, strikes: 0, goal: 90, sort: 'order',
+  autoQueen: true, sound: true, minutes: 3, strikes: 0, goal: 90, view: 'miss',
 };
 const data = (() => {
   let d = {};
@@ -512,7 +512,7 @@ function showResult(newBest, abandoned) {
   $('#resStats').innerHTML = stats.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   $('.goal').style.display = r.mode === 'racer' ? '' : 'none';
   $('#goal').value = S.goal;
-  for (const b of $('#sortSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.sort);
+  for (const b of $('#sortSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.view);
   renderChart();
   renderList();
 }
@@ -538,24 +538,49 @@ function renderChart() {
   box.innerHTML = svg;
 }
 
+// Small static board showing the puzzle position (after the opponent's first move), like the lichess storm/racer results
+function miniBoard(p) {
+  const g = new Chess(p.fen);
+  const m = g.move(toMove(p.moves[0]));
+  const flip = Pool.solverColor(p) === 'b';
+  const at = (f, r) => `left:${(flip ? 7 - f : f) * 12.5}%;top:${(flip ? r : 7 - r) * 12.5}%`;
+  const sqAt = sq => at(sq.charCodeAt(0) - 97, +sq[1] - 1);
+  let html = m ? `<i style="${sqAt(m.from)}"></i><i style="${sqAt(m.to)}"></i>` : '';
+  g.board().forEach((row, i) => row.forEach((pc, f) => {
+    if (pc) html += `<img src="pieces/cburnett/${pc.color}${pc.type.toUpperCase()}.svg" alt="" style="${at(f, 7 - i)}">`;
+  }));
+  return `<div class="mini">${html}</div>`;
+}
+
 function renderList() {
   const r = lastResult;
   let items = r.history.map((h, i) => ({ ...h, i }));
-  if (S.sort === 'slow') items = items.filter(h => h.result === 'ok').sort((a, b) => b.ms - a.ms);
-  if (S.sort === 'miss') items = items.filter(h => h.result !== 'ok');
+  if (S.view === 'slow') items = items.filter(h => h.result === 'ok').sort((a, b) => b.ms - a.ms);
+  if (S.view === 'miss') items = items.filter(h => h.result !== 'ok');
   const box = $('#resList');
-  box.innerHTML = items.length ? '' : '<div class="desc">Nothing here</div>';
+  const empty = S.view === 'miss' && r.history.length ? 'No mistakes. Clean run!' : 'Nothing here';
+  box.innerHTML = items.length ? '' : `<div class="desc">${empty}</div>`;
   for (const h of items) {
-    const b = document.createElement('button');
-    b.className = 'prow ' + (h.result === 'ok' ? '' : h.result);
-    const themes = h.p.themes.filter(t => !['middlegame', 'endgame', 'opening', 'advantage', 'crushing'].includes(t)).slice(0, 2).map(themeName).join(', ');
-    b.innerHTML = `<span class="n">${h.i + 1}</span><span class="r">${h.p.rating}</span><span class="t"></span><span class="s">${h.ms ? (h.ms / 1000).toFixed(1) + 's' : ''}</span><span class="ms">${h.result === 'ok' ? 'check' : h.result === 'bad' ? 'close' : 'skip_next'}</span>`;
-    b.querySelector('.t').textContent = themes;
-    b.onclick = () => openReview(h);
-    box.appendChild(b);
+    // A real link, so middle-click / ctrl-click opens the puzzle on lichess in a new tab.
+    // A plain left click reviews it here instead.
+    const a = document.createElement('a');
+    a.className = 'ptile ' + h.result;
+    a.href = `https://lichess.org/training/${h.p.id}`;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = h.p.themes.map(themeName).join(', ') + '\nClick: review here · Middle-click: open on Lichess';
+    a.innerHTML = miniBoard(h.p) +
+      `<span class="foot"><span class="ms">${h.result === 'ok' ? 'check' : h.result === 'bad' ? 'close' : 'skip_next'}</span>` +
+      `<b>${h.p.rating}</b><span>${h.ms ? (h.ms / 1000).toFixed(1) + 's' : ''}</span></span>`;
+    a.onclick = e => {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      openReview(h);
+    };
+    box.appendChild(a);
   }
 }
-$('#sortSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.sort = b.dataset.v; save(); for (const x of $('#sortSeg').children) x.setAttribute('aria-pressed', x === b); renderList(); };
+$('#sortSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; save(); for (const x of $('#sortSeg').children) x.setAttribute('aria-pressed', x === b); renderList(); };
 $('#goal').onchange = e => { const v = Math.round(+e.target.value); if (v > 0) { S.goal = v; save(); renderChart(); } };
 
 // ---- Review a puzzle from the results ----

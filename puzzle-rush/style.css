@@ -186,17 +186,23 @@ button.tile { border: 0; cursor: pointer; }
 #chart { margin: 6px 0 10px; }
 #chart svg { display: block; width: 100%; height: auto; }
 #chart .empty { font-size: 13px; color: var(--dim); padding: 8px 0; }
-#resList { max-height: 300px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 2px; }
-.prow { display: grid; grid-template-columns: 28px 52px 1fr auto 24px; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px;
-  font-size: 14px; cursor: pointer; background: transparent; border: 0; width: 100%; text-align: left; justify-content: initial; }
-.prow:hover { background: var(--card-hi); }
-.prow .n { color: var(--dim); font: 12px 'Roboto Mono', monospace; }
-.prow .r { font-family: 'Roboto Mono', monospace; }
-.prow .t { color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prow .s { font: 12px 'Roboto Mono', monospace; color: var(--dim); }
-.prow .ms { font-size: 18px; color: var(--good); }
-.prow.bad .ms { color: var(--bad); }
-.prow.skip .ms { color: var(--dim); }
+/* Puzzle previews: mini boards like the lichess racer/storm results */
+#resList { max-height: 460px; overflow-y: auto; margin-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; }
+#resList .desc { grid-column: 1 / -1; }
+.ptile { display: block; color: var(--text); text-decoration: none; border-radius: 4px; overflow: hidden; background: var(--card-hi); }
+.ptile:hover { outline: 2px solid var(--accent); }
+.ptile:focus-visible { outline: 2px solid var(--accent); }
+.mini { position: relative; aspect-ratio: 1; background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 25% 25%; }
+.mini img, .mini i { position: absolute; width: 12.5%; height: 12.5%; }
+.mini i { background: rgba(155, 199, 0, .41); }
+.foot { display: flex; align-items: center; gap: 4px; padding: 3px 6px; font: 12px 'Roboto Mono', monospace; color: var(--dim);
+  border-top: 3px solid var(--good); }
+.foot b { color: var(--text); font-weight: 500; flex: 1; }
+.foot .ms { font-size: 16px; color: var(--good); }
+.ptile.bad .foot { border-top-color: var(--bad); }
+.ptile.bad .foot .ms { color: var(--bad); }
+.ptile.skip .foot { border-top-color: var(--dim); }
+.ptile.skip .foot .ms { color: var(--dim); }
 
 /* Review */
 .rev-head { display: flex; justify-content: space-between; align-items: baseline; }
